@@ -39,56 +39,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-import org.ungoverned.oscar.util.DefaultBundleCache;
-
 public class Main
 {
     private static Oscar m_oscar = null;
 
     public static void main(String[] argv) throws Exception
     {
-        // Initialize the system properties.
-        Oscar.initializeSystemProperties();
-
-        // See if the profile name property was specified.
-        String profileName = System.getProperty(DefaultBundleCache.CACHE_PROFILE_PROP);
-
-        // See if the profile directory property was specified.
-        String profileDirName = System.getProperty(DefaultBundleCache.CACHE_PROFILE_DIR_PROP);
-
-        // Print welcome banner.
-        System.out.println("\nWelcome to Oscar.");
-        System.out.println("=================\n");
-
-        // If no profile or profile directory is specified in the
-        // properties, then ask for a profile name.
-        if ((profileName == null) && (profileDirName == null))
-        {
-            System.out.print("Enter profile name: ");
-            BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-            try
-            {
-                profileName = in.readLine();
-            }
-            catch (IOException ex)
-            {
-                System.err.println("Could not read input.");
-                System.exit(-1);
-            }
-            System.out.println("");
-            if (profileName.length() != 0)
-            {
-                System.setProperty(DefaultBundleCache.CACHE_PROFILE_PROP, profileName);
-            }
-        }
-
-        // A profile directory or name must be specified.
-        if ((profileDirName == null) && (profileName.length() == 0))
-        {
-            System.err.println("You must specify a profile name or directory.");
-            System.exit(-1);
-        }
-
         try
         {
             // Now create an instance of Oscar.
