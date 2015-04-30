@@ -1,15 +1,9 @@
-<project name="moduleloader" default="all" basedir=".">
+<project name="OscarDemo" default="all" basedir=".">
 
     <!-- Set our global properties -->
     <property name="src.dir" value="src"/>
-    <property name="src-bundle.dir" value="src-bundle"/>
     <property name="lib.dir" value="lib"/>
     <property name="output.dir" value="classes"/>
-    <property name="bundle.dir" value="bundle"/>
-    <property name="etc.dir" value="etc"/>
-    <property name="doc.dir" value="doc"/>
-    <property name="apidoc.dir" value="${doc.dir}/api"/>
-    <property name="dist.dir" value="dist"/>
     <property name="debug.value" value="on"/>
 
     <!-- Create class path from lib and output directories. -->
@@ -25,8 +19,6 @@
         <!-- Test source file availability. -->
         <available file="${src.dir}"
             type="dir" property="src.present"/>
-        <available file="${src-bundle.dir}"
-            type="dir" property="src-bundle.present"/>
     </target>
 
     <target name="init" if="src.present" depends="property-init">
@@ -36,18 +28,10 @@
         <mkdir dir="${output.dir}"/>
     </target>
 
-    <target name="bundle-init" if="src.present" depends="property-init">
-        <!-- Create bundle directory. -->
-        <mkdir dir="${bundle.dir}"/>
-    </target>
-
     <!-- Compile and JAR everything -->
     <target name="all" depends="property-init">
         <antcall target="compile"/>
-        <antcall target="moduleloader"/>
-        <antcall target="osgi"/>
         <antcall target="oscar"/>
-        <antcall target="bundle"/>
     </target>
 
     <!-- Compile everything. -->
@@ -59,168 +43,27 @@
         </javac>
     </target>
 
-    <!-- Create module loader JAR file. -->
-    <target name="moduleloader" if="src.present" depends="compile">
-        <jar jarfile="${lib.dir}/moduleloader.jar"
-            basedir="${output.dir}">
-            <include name="org/ungoverned/moduleloader/"/>
-        </jar>
-    </target>
-
-    <!-- Create OSGi JAR file. -->
-    <target name="osgi" if="src.present" depends="compile">
-        <jar jarfile="${lib.dir}/osgi.jar" basedir="${output.dir}">
-            <include name="org/osgi/**"/>
-        </jar>
-    </target>
-
     <!-- Create Oscar JAR file. -->
     <target name="oscar" if="src.present" depends="compile">
         <jar manifest="${src.dir}/org/ungoverned/oscar/manifest.mf"
             jarfile="${lib.dir}/oscar.jar"
             basedir="${output.dir}">
             <include name="org/ungoverned/oscar/"/>
+            <include name="org/osgi/**"/>
+            <include name="org/ungoverned/moduleloader/"/>
             <exclude name="org/ungoverned/oscar/installer/"/>
         </jar>
     </target>
 
-    <!-- Build all available bundles. -->
-    <target name="bundle" if="src-bundle.present" depends="bundle-init">
-        <subant target="">
-            <property name="bundle.dir" value="../../${bundle.dir}"/>
-            <property name="dist.dir" value="../../${dist.dir}"/>
-            <fileset dir="${src-bundle.dir}" includes="*/build.xml"/>
-        </subant>
-    </target>
-
-    <!-- Create the distribution JAR files. -->
-    <target name="dist">
-        <!-- Create dist directory. -->
-        <mkdir dir="${dist.dir}"/>
-        <antcall target="oscar-dist"/>
-        <antcall target="bundle-dist"/>
-    </target>
-
-    <!-- This checks to make sure the necessary shell bundles -->
-    <!-- are present for creating the Oscar distribution. -->
-    <target name="dist-check">
-        <condition property="shell.bundles.present">
-            <and>
-            <available file="${bundle.dir}/shell.jar"/>
-            <available file="${bundle.dir}/shelltui.jar"/>
-            <available file="${bundle.dir}/shellgui.jar"/>
-            <available file="${bundle.dir}/shellplugin.jar"/>
-            <available file="${bundle.dir}/bundlerepository.jar"/>
-            <available file="${bundle.dir}/tablelayout.jar"/>
-            </and>
-        </condition>
-    </target>
-
-    <!-- Create Oscar distribution JAR files. -->
-    <target name="oscar-dist" if="src.present" depends="all,dist-check">
-        <!-- Make sure we have the bundles required for -->
-        <!-- creating the Oscar release distribution.   -->
-        <fail unless="shell.bundles.present" message="Creating an Oscar distribution requires shell.jar, shelltui.jar, shellgui.jar, shellplugin.jar, bundlerepository.jar, and tablelayout.jar. Please copy them into the bundle directory."/>
-
-        <!-- JAR the source tree into the installer package. -->
-        <!-- Include only the simple bundle as an example. -->
-        <jar jarfile="${output.dir}/org/ungoverned/oscar/installer/resource/src.jar"
-            basedir="${basedir}">
-            <include name="build.xml"/>
-            <include name="${src.dir}/**"/>
-            <include name="${src-bundle.dir}/simple/**"/>
-            <exclude name="${src-bundle.dir}/simple/classes/"/>
-        </jar>
-
-        <!-- JAR the oscar libs and put them in the installer package. -->
-        <!-- Also include the shell-related bundles.                   -->
-        <jar jarfile="${output.dir}/org/ungoverned/oscar/installer/resource/package.jar"
-            basedir="${basedir}">
-            <include name="${lib.dir}/moduleloader.jar"/>
-            <include name="${lib.dir}/oscar.jar"/>
-            <include name="${lib.dir}/osgi.jar"/>
-            <include name="${bundle.dir}/simple.jar"/>
-            <include name="${bundle.dir}/shell.jar"/>
-            <include name="${bundle.dir}/shelltui.jar"/>
-            <include name="${bundle.dir}/shellgui.jar"/>
-            <include name="${bundle.dir}/tablelayout.jar"/>
-            <include name="${bundle.dir}/shellplugin.jar"/>
-            <include name="${bundle.dir}/bundlerepository.jar"/>
-        </jar>
-
-        <!-- Copy various files to installer package. -->
-        <copy todir="${output.dir}/org/ungoverned/oscar/installer/resource">
-            <fileset dir="${etc.dir}" includes="oscar*"/>
-            <fileset dir="${etc.dir}" includes="system.properties.*"/>
-            <fileset dir="${etc.dir}" includes="example.policy"/>
-            <fileset dir="${basedir}" includes="LICENSE.txt"/>
-        </copy>
-
-        <!-- JAR the installer. -->
-        <jar jarfile="${dist.dir}/oscar.jar"
-            basedir="${output.dir}"
-            manifest="${src.dir}/org/ungoverned/oscar/installer/manifest.mf">
-            <include name="org/ungoverned/oscar/installer/**"/>
-        </jar>
-
-        <antcall target="doc-dist"/>
-    </target>
-
-    <!-- Create doc distribution JAR file. -->
-    <target name="doc-dist" depends="apidoc">
-        <!-- JAR the user docs. -->
-        <jar jarfile="${dist.dir}/oscar-doc.jar" basedir="${basedir}">
-            <include name="${doc.dir}/**"/>
-            <exclude name="${apidoc.dir}/**"/>
-        </jar>
-
-        <!-- JAR the API docs. -->
-        <jar jarfile="${dist.dir}/oscar-api.jar" basedir="${basedir}">
-            <include name="${apidoc.dir}/**"/>
-        </jar>
-    </target>
-
-    <!-- Generate the Java API documentation. -->
-    <target name="apidoc" depends="init">
-        <mkdir dir="${apidoc.dir}"/>
-        <javadoc sourcepath="${src.dir}"
-                 packagenames="org.*"
-                 destdir="${apidoc.dir}"
-                 author="true"
-                 windowtitle="Oscar API Documentation"/>
-    </target>
-
-    <!-- Create source distribution for available bundles. -->
-    <target name="bundle-dist" if="src-bundle.present" depends="init">
-        <subant target="dist">
-            <property name="bundle.dir" value="../../${bundle.dir}"/>
-            <property name="dist.dir" value="../../${dist.dir}"/>
-            <fileset dir="${src-bundle.dir}" includes="*/build.xml"/>
-        </subant>
-    </target>
-
-
     <!-- Clean up everything. -->
     <target name="clean">
         <antcall target="framework-clean"/>
-        <antcall target="bundle-clean"/>
-        <delete dir="${dist.dir}"/>
     </target>
 
     <target name="framework-clean" if="src.present" depends="property-init">
         <delete dir="${output.dir}"/>
-        <delete dir="${apidoc.dir}"/>
-        <delete file="${lib.dir}/osgi.jar"/>
-        <delete file="${lib.dir}/moduleloader.jar"/>
+        <delete dir="${lib.dir}"/>
         <delete file="${lib.dir}/oscar.jar"/>
-    </target>
-
-    <target name="bundle-clean" if="src-bundle.present" depends="property-init">
-        <subant target="clean">
-            <property name="bundle.dir" value="../../${bundle.dir}"/>
-            <property name="dist.dir" value="../../${dist.dir}"/>
-            <fileset dir="${src-bundle.dir}" includes="*/build.xml"/>
-        </subant>
     </target>
 
 </project>
