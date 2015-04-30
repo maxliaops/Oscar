@@ -1,0 +1,8 @@
+Bundle-Name: Simple
+Bundle-Description: Simple bundle that demonstates OSGi features.
+Bundle-UpdateLocation: http://oscar-osgi.sf.net/repo/simple/simple.jar
+Bundle-Version: 1.0.0
+Bundle-Activator: org.ungoverned.osgi.bundle.simple.SimpleBundle
+Bundle-ClassPath: .,org/ungoverned/osgi/bundle/simple/embedded.jar
+Bundle-NativeCode: /libfoo.so; osname=Linux; processor=x86
+DynamicImport-Package: javax.servlet.*

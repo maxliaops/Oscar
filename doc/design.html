@@ -1,0 +1,223 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Richard S. Hall">
+  <title>Oscar Usage</title>
+</head>
+<body text="#000000" bgcolor="#ffffff" link="#0000ee" vlink="#551a8b" alink="#ff0000">
+<font face="sans-serif">
+
+<h2>Oscar Design & Implementation</h2>
+
+<tt>Release version: 1.0.5 - May 13, 2005</tt>
+
+<p><i>This document has not yet been updated for version <tt>1.0.0</tt> of Oscar.</i></p>
+
+<p>
+The purpose of this document is to provide a brief overview of the basic
+Oscar design. It is not intended as an Oscar tutorial, nor is it a
+tutorial for implementing your own OSGi implementation. The main goal
+is serve as a roadmad for the overall structure of Oscar in order to help
+people who may need or want to look at the source code for any reason.
+
+<h2>Starting Point - <tt>org.ungoverned.oscar.Oscar</tt></h2>
+
+<p>
+The <tt>org.ungoverned.oscar.Oscar</tt> class is the core
+of the OSGi framework in the Oscar project; every other class either needs
+the <tt>Oscar</tt> class or is some ancillary supporting class
+The <tt>Oscar</tt> class is generally not used directly, rather it is
+either started by a bootstrap class or embedded inside of another
+application. For example, the <tt>org.ungoverned.oscar.Main</tt> class
+creats an instance of Oscar that is then accessible via the shell service
+provided by the <tt>shell.jar</tt> bundle.
+</p>
+<p>
+The design approach taken for Oscar is reasonably decentralized; even
+though the <tt>Oscar</tt> class serves as the logical center of the framework,
+much of the bundle functionality is implemented in the bundles themselves. The
+<tt>Oscar</tt> class has four main functions:
+</p>
+<ul>
+    <li>Maintains a list of installed bundles.
+    <li>Maintains a list of registered event listeners.
+    <li>Maintains lists of registered and bound exported packages.
+    <li>Provides a global concurrency control mechanism.
+    <li>Provides a storage mechanism.
+</ul>
+The following sections describe each of these functions in more detail.
+
+<h2>Maintaining installed bundles</h2>
+<p>
+The <tt>Oscar</tt> class maintains a list of installed bundles in the
+member variable <tt>m_installedBundleMap</tt>; the following methods access
+and manipulate the bundle list:
+</p>
+<ul>
+    <li><tt>public Bundle getBundle(long id)</tt>
+    </li>
+    <li><tt>public Bundle getBundle(String location)</tt>
+    </li>
+    <li><tt>public Bundle[] getBundles()</tt>
+    </li>
+    <li><tt>public Bundle installBundle(String location, InputStream is)</tt>
+    </li>
+    <li><tt>protected void addBundle(Bundle bundle)</tt>
+    </li>
+    <li><tt>protected void removeBundle(Bundle bundle)</tt>
+    </li>
+</ul>
+<p>
+As you can see, not all of these methods are publicly accessible. Oscar
+delegates most of the bundle-related functionality to the <tt>BundleImpl</tt>
+class itself. As a result of this choice, the <tt>Oscar</tt> class does
+not directly install bundles into its bundle list. Instead, the
+<tt>Oscar.installBundle()</tt> method calls the static factory method
+<tt>BundleImpl.install()</tt> which then calls the protected method
+<tt>Oscar.addBundle()</tt> to add a new <tt>BundleImpl</tt> instance
+to the framework's bundle list. The design choice was made in order to
+keep all bundle-related code in the <tt>BundleImpl</tt> class, rather
+than scattered throughout both <tt>Oscar</tt> and <tt>BundleImpl</tt> classes.
+This separation of concerns is not complete at this point and future versions
+of Oscar will likely continue to push in this direction.
+</p>
+
+<h2>Maintaining event listeners</h2>
+<p>
+The <tt>Oscar</tt> class maintains and handles all event listeners in a
+single data structure, which is implemented by the class
+<tt>org.ungoverned.oscar.util.DispatchQueue</tt>. <tt>DispatchQueue</tt>
+uses a separate thread for dispatching events as is required by the
+OSGi specification.
+</p>
+<p>
+For more efficient event handling, <tt>Oscar</tt> wraps every event listener
+that it receives in order to keep track of which bundle registered the listener.
+This is necessary for operations like <tt>Bundle.stop()</tt>, which is required
+to remove all listeners associated with the stopping bundle. By keeping track
+of the bundle that registered a listener, it is easy to determine which listeners
+need to be removed when a bundle stops. In addition, the wrapper for
+<tt>ServiceListener</tt>s has additional functionality to perform filtering
+based security permission and on a supplied LDAP query string as is required
+by the OSGi specification. All listener wrappers also perform the event
+callback inside of a <tt>doPrivileged()</tt> block if a security manager
+is installed.
+</p>
+
+<h2>Maintaining exported packages</h2>
+<p>
+Since multiple bundles may export the same package, it is important that the
+framework ensure that all bundles that import a given package use the same
+exported version of that package. In order to get reasonably flexible handling
+of exported packages, <tt>Oscar</tt> registers all exported packages in a centralized
+list of registered exported packages whenever a bundle is installed; this list
+of registered packages is held in the <tt>m_exportedPackageMap</tt> member
+variable of <tt>Oscar</tt>. Packages in the exported package list are not
+immediately available for use by other bundles, though. Exported packages are
+only available when a bundle is resolved. Further, Oscar delays resolving a
+bundle until the last possible moment.
+</p>
+<p>
+Typically, a bundle is resolved at the same time it is activated with the
+<tt>Bundle.start()</tt> method. Resolving a bundle entails making sure that
+each of its imported packages are bound to an exporting package. <tt>Oscar</tt>
+keeps track of all bound packages in its <tt>m_resolvedPackageMap</tt> member
+variable; the list of exported packages is searched to find the newest version
+of an exported package. In addition to binding imported packages
+during bundle resolution, any packages that a bundle exports are also bound
+at the same time. This is due to the fact that a bundle implicitly imports
+any package that it export per the OSGi specification; notice, this does
+not necessarily mean that a bundle's export package will be bound to the
+package contained in the bundle's JAR file, it may end up being bound to
+a different bundle's export package.
+</p>
+<p>
+Delaying bundle resolution is a good idea, because it ensures that packages
+are not bound too early; if bundles were resolved as soon as they were
+installed, it might lead to old versions of packages being chosen instead
+of newer versions depending on the order in which the bundles were installed.
+Despite this advantage of delaying bundle resolution until <tt>Bundle.start()</tt>,
+there is the disadvantage that you are unable to start a dependent bundle
+until all of the bundles on which it depends are started; this is because
+exported packages are not available until a bundle is resolved, as stated
+above, and there is no explicit method in OSGi to only resolve a bundle.
+</p>
+<p>
+To eliminate this problem, <tt>Oscar</tt> uses the list of exported packages
+to perform "eager resolving." This means that whenever you try to start a bundle,
+the bound package list is searched for any required imported packages; if any
+of the imported packages are found, then they are bound to the
+found export packages. If an imported package is not found in the bound
+package list, then the exported package list is searched. If the desired
+import package is found in the exported package list, then <tt>Oscar</tt>
+automatically resolves the bundle exporting the package, thus making the
+source bundle's packages available for import by other bundles. At this
+point, Oscar can finish starting the original bundle that caused the
+eager resolve in the first place. This, eliminates the main
+disadvantage of delayed bundle resolution.
+</p>
+
+<h2>Providing global concurrency control</h2>
+<p>
+Generally speaking, the Oscar framework uses bundle-level concurrency control
+locking. This means that each bundle is a unit of concurrent execution, i.e.,
+separate threads can be active in separate bundles at the same time. This level
+of concurrency is reasonably fine-grained and could even be made more fine-grained
+if desired, but this level of concurrency control introduces some difficulties.
+In particular, framework functionality that must perform a multi-bundle
+operation needs some way to ensure that the set of bundles it wants to
+operate on is not changed in anyway during the multi-bundle operation. A
+prime example of this situation is refreshing exported packages after a
+bundle is removed or updated; refreshing affects a set of bundles that
+must all be stopped, potentially updated, and restarted in one operation.
+</p>
+<p>
+In order to handle this situation, <tt>Oscar</tt> provides the following
+methods to create a locking mechanism similar to a reader/writer lock:
+</p>
+<ul>
+    <li>beginSingleBundleStateChange()
+    <li>endSingleBundleStateChange()
+    <li>beginMultiBundleStateChange()
+    <li>endMultiBundleStateChange()
+</ul>
+<p>
+The <tt>beginSingleBundleStateChange()</tt> method is called by the
+<tt>BundleImpl</tt> class to request access to the bundle instance's lock; this
+is semi-equivalent to a reader in a reader/writer lock. It is possible for
+numerous single-bundle operations to occur at the same time, although if
+two threads try to perform a single-bundle operation on the same bundle only
+one will succeed because each bundle operation also uses an instance lock
+to protect its critical region. This is possible because
+<tt>beginSingleBundleStateChange()</tt> does not actually lock a bundle
+instance, it only grants permission to lock the bundle instance.
+When the single-bundle operation is completed, a call to
+<tt>endSingeBundleStateChange()</tt> informs the framework that the
+operation is complete.
+</p>
+<p>
+The <tt>beginMultiBundleStateChange</tt> is called by an operation that
+requires semi-exclusive access to the installed bundles; this is equivalent
+to a writer in a reader/writer lock. Only one multi-bundle operation may be
+performed at a time and no single-bundle operation are allowed while a
+multi-bundle operation is being performed. As a result, the multi-bundle
+operation does not have to worry about other threads messing with its bundles
+Multi-bundle operations are given preference since they occur less regularly.
+When the multi-bundle operation is completed, a call to
+<tt>endMultiBundleStateChange()</tt> informs the framework that the
+operation is complete.
+</p>
+
+<h2>Final Comments</h2>
+<p>
+This information is likely to change faster than I can update this
+document, so keep that in mind when browsing the source code.
+If you have comments or suggestions, feel free to contact me at
+<a href="mailto:heavy@ungoverned.org">heavy@ungoverned.org</a>
+</p>
+<p>Richard S. Hall</p>
+
+</font>
+</body>
+</html>

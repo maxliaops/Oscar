@@ -1,0 +1,398 @@
+<!DOCTYPE doctype PUBLIC "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="Author" content="Richard S. Hall"><title>Bundle Caching in Oscar</title>
+</head>
+
+<body text="#000000" bgcolor="#ffffff" link="#0000ee" vlink="#551a8b" alink="#ff0000">
+<font face="sans-serif">
+
+<h2>Bundle Caching in Oscar</h2>
+
+<tt>Release version: 1.0.5 - May 13, 2005</tt>
+
+<ul>
+   <li> <a href="#introduction">Introduction</a></li>
+   <li> <a href="#default">Default Behavior</a></li>
+   <li> <a href="#configuring">Configuring Default Behavior</a></li>
+   <li> <a href="#converting">Converting Old Oscar Profiles</a></li>
+</ul>
+
+<a name="introduction"></a>
+<h2>Introduction</h2>
+
+<p>
+The OSGi specification states that the framework must cache bundles and
+their run-time state, but it does not explicitly define how this should be
+done. As a result, each OSGi framework implementation is likely to cache
+bundles differently. This document describes in detail how Oscar handles
+bundle caching by default and also illustrates the mechanisms Oscar provides
+to modify this default behavior.
+</p>
+
+<a name="default"></a>
+<h2>Default Behavior</h2>
+
+<p>
+Oscar creates a local cache directory, called <tt>.oscar</tt>, in the
+home directory of the user; the location of the user's home directory
+varies depending on the operating system. Oscar does not directly cache
+bundles into the local cache directory, since this would only allow one
+set of bundles to be installed for each user. Instead, Oscar introduces
+the notion of a <i>profile</i>, which is an arbitrarily name given to
+a set of installed bundles. When starting Oscar from the command-line,
+the user is prompted for a profile name. Oscar creates a sub-directory in
+<tt>.oscar</tt> named after the profile. All bundle information is then
+cached inside of the profile directory. The benefit of this approach is
+that the user is able to have different profiles for different purposes,
+such as ones for debugging, testing, or experimenting.
+</p>
+
+<p>
+The structure of a profile directory is reasonably simple, it contains
+a directory for each bundle, where the directory name corresponds to the
+bundle identifier number. Each bundle directory contains a file for
+the bundle's location, start level, state, and a directory containing
+the bundle bundle JAR file and any extracted embedded JAR files or native
+libraries if any exist. As an example, the profile directory for the
+<tt>simple.jar</tt> example bundle looks like this:
+</p>
+
+<pre>
+<font color="000099">
+    ~/.oscar/
+        example/
+            bundle4/
+                bundle.location
+                bundle.startlevel
+                bundle.state
+                data/
+                version0.0/
+                    bundle.jar
+                    embedded/
+                        embedded.jar
+                    lib/
+                        libfoo.so
+</font>
+</pre>
+
+<p>
+The above directory structure indicates that the <tt>simple.jar</tt> bundle
+is in the profile named "example" and that "4" is its bundle identifier.
+Additionally, besides the bundle JAR file, the bundle has one embedded
+JAR file and one native library. The naming convention is rather
+straightforward and consistent. All bundle directories will follow the
+naming pattern displayed above, except for the names of the embedded
+JAR files and native libraries. Embedded JAR files and native libraries
+use the names specified in the bundle manifest and may also include
+sub-directories. The naming convention for the directory containing
+the bundle JAR file, <tt>version0.0</tt>, requires further explanation.
+</p>
+
+<p>
+The bundle JAR directory uses a numbering scheme to keep track of the
+number of times a bundle is updated and the number of times it is
+refreshed; the name of the directory maps like this:
+<tt>version&lt;refresh-count&gt;.&lt;revision-count&gt;</tt>. The reasoning
+behind this is tricky. It is necessary to keep track of the revision
+count because the OSGi specification requires when a bundle is updated
+that the update takes effect immediately. However, it also requires that
+old packages from older revisions of the updated bundle are kept available
+until a refresh of the framework is performed. As a result, it is possible
+for multiple revisions of a bundle JAR to be providing packages at a given
+time. For example, if a bundle provides package <tt>foo</tt>
+and it is updated and now provides packages <tt>foo</tt> and <tt>bar</tt>,
+then after the update <tt>foo</tt> will be supplied from the older
+revision and <tt>bar</tt> will be supplied from the newer revision. This
+is possible for any number of updates, thus the bundle JAR directory must
+keep around each revision until a refresh is performed. Such "revision
+directories" are generally only run-time directories and are removed when
+the framework is shutdown or refreshed, they are not intended to exist for
+multiple sessions of execution. To illustrate, upon initial installation,
+the bundle JAR file is placed into a revision directory named
+<tt>revision0.0</tt>. When an update is performed, the updated bundle JAR
+file is placed in a directory named <tt>revision0.1</tt>. If another update
+is performed without a refresh of the framework, the newer revision will be
+placed into a directory named <tt>revision0.2</tt> and so on.
+</p>
+
+<p>
+When the framework is refreshed or shutdown, all revision directories are
+purged from the bundle cache and only the most recent revision directory
+is maintained. Simply purging the old revision directories may appear
+adequate for refreshing the framework, but it is not due to how the JVM
+handles native libraries. When a native library is loaded it is associated
+with a specific class loader; no other class loader can load the same
+native library. The uniqueness of a native library is determined by its
+absolute path in the file system. Consequently, when the framework is
+refreshed, it is necessary to recreate the class loaders for all refreshed
+bundles. If a refreshed bundle has a native library, then this would
+result in an exception since the native library is still associated with
+the prior class loader; the refresh counter remedies this situation.
+After purging all old revision directories, the current revision directory
+is renamed based on the current refresh count. By renaming the directory,
+it is possible to re-load the native library since its path in the file
+system has changed. The old class loaders and native libraries will
+eventually be garbage collected. The current refresh count is stored in
+a file, called <tt>refresh.counter</tt>, in the bundle's directory. To
+illustrate, if a bundle was updated and has two revision directories,
+<tt>revision0.0</tt> and <tt>revision0.1</tt>, after a refresh the older
+revision directory will be deleted and the newest revision directory
+will be renamed to <tt>revision1.0</tt>. If the bundle is refresh again,
+its revision directory will become <tt>revision2.0</tt> and so on. <i>Note:
+Bundles may be refreshed when they are updated or when they depend on
+other bundles that have been updated; either way it is necessary to
+increment the refresh count and rename the revision directory.</i>
+</p>
+
+<a name="configuring"></a>
+<h2>Configuring Default Behavior</h2>
+
+<p>
+It is possible to modify the default behavior of Oscar's bundle
+cache by setting certain system properties; see the
+<a href="usage.html#configuring_oscar">usage document</a> for
+information on how to set system properties for Oscar. The
+following properties are related to bundle caching in Oscar:
+</p>
+
+<ul>
+  <li><tt>oscar.cache.bufsize</tt> - Sets the buffer size to be used by
+      the cache; the default value is 4096. The integer
+      value of this string provides control over the size of the
+      internal buffer of the disk cache for performance reasons.
+  </li>
+  <li><tt>oscar.cache.dir</tt> - Sets the directory to be used by the
+      cache as its cache directory. The cache directory is where all
+      profile directories are stored and a profile directory is where a
+      set of installed bundles are stored. By default, the cache
+      directory is <tt>.oscar</tt> in the user's home directory. If
+      this property is specified, then its value will be used as the cache
+      directory instead of <tt>.oscar</tt>. This directory will be created
+      if it does not exist.
+  </li>
+  <li><tt>oscar.cache.profile</tt> - Sets the profile name that will be
+      used to create a profile directory inside of the cache directory.
+      The created directory will contained all installed bundles associated
+      with the profile.
+  </li>
+  <li><tt>oscar.cache.profiledir</tt> - Sets the directory to use as the
+      profile directory for the bundle cache; by default the profile
+      name is used to create a directory in the <tt>.oscar</tt> cache
+      directory. If this property is specified, then the cache directory
+      and profile name properties are ignored. The specified value of this
+      property is used directly as the directory to contain all cached
+      bundles. If this property is set, it is not necessary to set the
+      cache directory or profile name properties. This directory will be
+      created if it does not exist.
+  </li>
+</ul>
+
+<a name="converting"></a>
+<h2>Converting Old Oscar Profiles</h2>
+
+<p>
+Older verions of Oscar (prior to version 1.0.0) used a different bundle
+cache structure. For the most part, the new structure just re-arranges
+the old structure, but there was one change that is not simply a
+rearrangement. Previous versions of Oscar saved some data as binary, but
+current versions of Oscar saves data as plaing text, so that it is more
+easily editable. In particular, the bundle location, state, start level,
+and refresh counter are all now saved as plain text. Unforunately, this
+makes editing by hand more difficult, but not impossible. The following
+Java class will convert from pre-1.0.0 Oscar profiles to post-1.0.0
+Oscar profiles (definitely make a back-up of your cache directory before
+running this program):
+</p>
+
+<pre>
+<font color="000099">
+package converter;
+
+import java.io.*;
+import org.osgi.framework.Bundle;
+
+public class Convert
+{
+    public static void main(String[] argv) throws Exception
+    {
+        // This assumes that we are converting the .oscar directory.
+        String home = System.getProperty("user.home");
+        File cacheDir = new File(home, ".oscar");
+        // Get all of the profile directories and convert each one.
+        File[] children = cacheDir.listFiles();
+        for (int i = 0; i < children.length; i++)
+        {
+            System.out.println("Converting: " + children[i].getName());
+            convertProfileDirectory(children[i]);
+        }
+    }
+
+    public static void convertProfileDirectory(File profileDir) throws IOException
+    {
+        // There is no longer a "bundles" directory, so we want
+        // to remove it, but first convert all bundle directories
+        // and then move them up into the profile directory.
+        File bundlesDir = new File(profileDir, "bundles");
+        File[] children = bundlesDir.listFiles();
+        for (int i = 0; i < children.length; i++)
+        {
+            convertBundleDirectory(children[i]);
+            children[i].renameTo(new File(profileDir, children[i].getName()));
+        }
+        
+        // Now that all bundle directories are moved,
+        // delete the bundles directory.
+        bundlesDir.delete();
+    }
+    
+    public static void convertBundleDirectory(File bundleDir) throws IOException
+    {
+        File file = null;
+
+        // Convert location file to plain text.
+        file = new File(bundleDir, "bundle.location");
+        if (file.exists())
+        {
+            String s = readString(file);
+            writeString(file, s);
+        }
+        
+        // Convert state file to plain text.
+        file = new File(bundleDir, "bundle.state");
+        if (file.exists())
+        {
+            int i = readInteger(file);
+            writeString(file, (i == Bundle.ACTIVE) ? "active" : "installed");
+        }
+        
+        // Convert start level file to plain text.
+        file = new File(bundleDir, "bundle.startlevel");
+        if (file.exists())
+        {
+            int i = readInteger(file);
+            writeString(file, Integer.toString(i));
+        }
+        
+        // Delete old update counter file; it is not necessary to
+        // recreate this since it will be done automatically the
+        // next time the bundle is updated.
+        file = new File(bundleDir, "update.counter");
+        if (file.exists())
+        {
+            file.delete();
+        }
+
+        // Create a revision directory for the current bundle JAR file.
+        File revisionDir = new File(bundleDir, "version0.0");
+        revisionDir.mkdir();
+        
+        // Move bundle JAR file into revision directory.
+        file = new File(bundleDir, "bundle.jar");
+        file.renameTo(new File(revisionDir, "bundle.jar"));
+        
+        // Move embedded JAR directory into revision directory.
+        file = new File(bundleDir, "embedded");
+        file.renameTo(new File(revisionDir, "embedded"));
+        
+        // Find the native library directory and move it to the
+        // revision directory and rename it.
+        File[] children = bundleDir.listFiles();
+        for (int i = 0; i < children.length; i++)
+        {
+            if (children[i].getName().startsWith("lib"))
+            {
+                children[i].renameTo(new File(revisionDir, "lib"));
+                break;
+            }
+        }
+    }
+
+    public static void writeString(File file, String s) throws IOException
+    {
+        FileWriter fw = null;
+        BufferedWriter bw = null;
+        try
+        {
+            fw = new FileWriter(file);
+            bw = new BufferedWriter(fw);
+            bw.write(s, 0, s.length());
+        }
+        finally
+        {
+            if (bw != null) bw.close();
+            if (fw != null) fw.close();
+        }
+    }
+
+    public static String readString(File file) throws IOException
+    {
+        FileInputStream fis = null;
+        DataInputStream dis = null;
+        try
+        {
+            fis = new FileInputStream(file);
+            dis = new DataInputStream(fis);
+            return dis.readUTF();
+        }
+        finally
+        {
+            if (fis != null) fis.close();
+            if (dis != null) fis.close();
+        }
+    }
+
+    public static int readInteger(File file) throws IOException
+    {
+        FileInputStream fis = null;
+        DataInputStream dis = null;
+        try
+        {
+            fis = new FileInputStream(file);
+            dis = new DataInputStream(fis);
+            return dis.readInt();
+        }
+        finally
+        {
+            if (fis != null) fis.close();
+            if (dis != null) fis.close();
+        }
+    }
+
+    public static long readLong(File file) throws IOException
+    {
+        FileInputStream fis = null;
+        DataInputStream dis = null;
+        try
+        {
+            fis = new FileInputStream(file);
+            dis = new DataInputStream(fis);
+            return dis.readLong();
+        }
+        finally
+        {
+            if (fis != null) fis.close();
+            if (dis != null) fis.close();
+        }
+    }
+}
+</font>
+</pre>
+
+<p>
+This program requires the <tt>osgi.jar</tt> to compile and run. This
+program was not extensively tested, but it did work under Linux on my
+own bundle cache directory.
+</p>
+
+<a name="final"></a>
+<h2>Final Comments</h2>
+<p>
+If you have comments or suggestions, feel free
+to contact me at <a href="mailto:heavy@ungoverned.org">heavy@ungoverned.org</a>
+</p>
+<p>Richard S. Hall </p>
+
+</font>
+</body></html>

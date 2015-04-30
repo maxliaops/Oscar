@@ -1,0 +1,541 @@
+<!DOCTYPE doctype PUBLIC "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="Author" content="Richard S. Hall">
+  <title>Oscar Security</title>
+</head>
+
+<body text="#000000" bgcolor="#ffffff" link="#0000ee" vlink="#551a8b" alink="#ff0000">
+<font face="sans-serif">
+
+<h2>Oscar Security</h2>
+
+<tt>Release version: 1.0.5 - May 13, 2005</tt>
+
+<ul>
+  <li> <a href="#enabling">Enabling Security</a></li>
+  <li> <a href="#oscar-security">Security in Oscar</a></li>
+  <li> <a href="#example">Example Policy</a></li>
+  <li> <a href="#demo">Security Demonstration</a></li>
+  <li> <a href="#native">Native Libraries</a></li>
+  <li> <a href="#issues">Security Issues</a></li>
+  <li> <a href="#feedback">Feedback</a></li>
+</ul>
+
+<a name="enabling"></a>
+<h2>Enabling Security</h2>
+
+<p>
+To enable security, use some form of the following command:
+</p>
+
+<pre>
+<font color="000099">
+    java -Djava.security.manager
+         -Djava.security.policy=&lt;policy-file&gt;
+         -jar lib/oscar.jar
+</font>
+</pre>
+
+<p>
+The <tt>-Djava.security.manager</tt> parameter installs the default Java
+security manager and the <tt>-Djava.security.policy=&lt;policy-file&gt;</tt>
+parameter specifies the policy file to use; a real file name should
+be substituted for <tt>&lt;policy-file&gt;</tt>. Please note that this
+command should be typed all on a single line; it is on two lines here
+for presentation purposes. Also, if this command is performed on a Windows
+machine, then substitute <tt>\</tt> for <tt>/</tt> where appropriate.
+</p>
+
+<a name="oscar-security"></a>
+<h2>Security in Oscar</h2>
+
+<p>
+OSGi specifies three different security permissions, namely
+<tt>AdminPermission</tt>, <tt>PackagePermission</tt>, and
+<tt>ServicePermission</tt>. The purpose of each of these permissions is
+as follows (for more detailed descriptions refer to the OSGi specification):
+</p>
+
+<ul>
+  <li><tt>AdminPermission</tt> - grants the authority to a bundle
+      to perform adminstrative tasks, like bundle life cycle operations or
+      any task that accesses sensitive information.
+  </li>
+  <li><tt>PackagePermission</tt> - grants the authority to a bundle
+      to import or export a given package or set of packages.
+  </li>
+  <li><tt>ServicePermission</tt> - grants the authority to a bundle
+      to register or get a given service interface or set of service
+      interfaces.
+  </li>
+</ul>
+
+<p>
+Adding security to Oscar has impacted it from a performance perspective
+and from an implementaiton perspective. There should be little if any
+performance impact when a security manager is not active because Oscar
+brackets permission checking with an <tt>if</tt>-statement such as:
+</p>
+
+<pre>
+<font color="000099">
+    if (System.getSecurityManager() != null)
+    {
+        // ...do permission check here...
+    }
+</font>
+</pre>
+
+<p>
+Additionally, when there is no security manager installed, Oscar does not
+perform <tt>doPrivileged()</tt> blocks and instead calls "unchecked" methods
+directly to bypass the creation of <tt>PrivilegedAction</tt> instances.
+With a security manager installed, however, the biggest performance impact
+is likely to be the creation of <tt>PrivilegeAction</tt> instances.
+</p>
+
+<p>
+Regarding the implementation impact of adding security to Oscar, the three
+different OSGi security permissions impacted Oscar in the following areas
+(the following text is slightly out of date):
+</p>
+
+<ul>
+  <li><tt>AdminPermission</tt> - the handling of administration
+      permissions is confined to the implementation of the <tt>Bundle</tt> interface;
+      specifically, <tt>BundleImpl.getHeaders()</tt>, <tt>BundleImpl.getResource()</tt>,
+      <tt>BundleImpl.getLocation()</tt>, <tt>BundleImpl.install()</tt>,
+      <tt>BundleImpl.start()</tt>, <tt>BundleImpl.stop()</tt>,
+      <tt>BundleImpl.uninstall()</tt>, <tt>BundleImpl.update()</tt>,
+      <tt>Oscar.refreshPackages()</tt>, and <tt>Oscar.shutdown()</tt> all
+      check that the caller has <tt>AdminPermission</tt> when security
+      is enabled.
+  </li>
+  <li><tt>PackagePermission</tt> - the handling of package permissions
+      is performed completely in the <tt>Oscar.resolveBundle()</tt> method.
+      This method ensures that no bundle can be resolved unless it has the
+      appropriate import and/or export permissions for the packages
+      specified in the bundle's manifest file.
+  </li>
+  <li><tt>ServicePermission</tt> - the handling of service permissions
+      impacts Oscar in a number of areas. Certain methods must filter their
+      results based on the permissions of the calling bundle, for example,
+      <tt>BundleImpl.getRegisteredServices()</tt> and
+      <tt>BundleImpl.getServicesInUse()</tt> filter their results to only
+      include the service references that the calling bundle is allowed to
+      see; no security exceptions are thrown here.
+      <tt>BundleImpl.getServiceObject()</tt> checks to make sure that
+      the caller has permission to get the service object, but does not
+      throw a security exception if the caller does not have permission,
+      it simply returns <tt>null</tt>; it is necessary to check permissions
+      here because <tt>ServiceReference</tt> objects can be freely passed
+      around. <tt>BundleImpl.registerService()</tt> checks to make sure
+      that the caller has permission to register its service and throws a
+      security exception if the bundle does not have permission.
+      <tt>Oscar.getServiceReferences()</tt> checks to make sure the caller
+      has permission to get the desired service interface, if not then no
+      security exception is thrown, only <tt>null</tt> is returned. Lastly,
+      <tt>ServiceWrapperListener.serviceChanged()</tt> filters out events
+      if the bundle that registered the <tt>ServiceListener</tt> does not
+      have permission to get the service that generated the event.
+  </li>
+</ul>
+
+<p>
+Further security-related implementation impacts in Oscar were in these
+areas:
+</p>
+
+<ul>
+  <li>File system access: <tt>LocalCache</tt> was reimplemented to use
+      <tt>doPrivileged()</tt> blocks whenever it needed to access the disk;
+      this ensures that access to the bundle cache will always succeed.
+  </li>
+  <li>Resource loading: <tt>BundleClassLoader.ClassPathEntry.getResource()</tt>
+      uses a <tt>doPrivileged()</tt> block to create URLs with a specified
+      <tt>URLStreamHandler</tt> for the "<tt>bundle:</tt>" protocol; this is
+      necessary because it is not possible to specify a
+      <tt>URLStreamHanderFactory</tt> because it would create a security
+      hole (e.g., any bundle could create an arbitrary URL using the
+      "<tt>bundle:</tt>" protocol).
+  </li>
+  <li>Installing bundles: <tt>BundleImpl.initialize()</tt> uses a <tt>doPrivileged()</tt>
+      block to create the <tt>BundleClassLoader</tt>; this is necessary since
+      non-trusted code may be on the call stack and creating a class loader is a
+      sensitive operation.
+  </li>
+  <li>Callbacks: Whenever Oscar invokes a callback method, it must do so
+      in a <tt>doPrivileged()</tt> block; specifically when <tt>Oscar.start()/stop()</tt>
+      calls <tt>BundleActivator.start()/stop()</tt>, <tt>ServiceRegistrationImpl.getService()/ungetService()</tt>
+      calls <tt>ServiceFactory.getService()/ungetService()</tt>, and when any
+      of the event <tt>ListenerWrapper</tt> classes invoke the callback methods
+      for <tt>BundleListener</tt>, <tt>FrameworkListener</tt>, and <tt>ServiceListener</tt>.
+  </li>
+</ul>
+
+<a name="example"></a>
+<h2>Example Policy</h2>
+
+<p>
+The Oscar release package includes a simple, example policy file; this
+policy file works in conjunction with three new example bundles
+(<a href="http://oscar-osgi.sf.net/repo/permissionmanager/">Permission Manager</a>,
+<a href="http://oscar-osgi.sf.net/repo/serviceregister/">Service Register</a>, and
+<a href="http://oscar-osgi.sf.net/repo/servicelookup/">Service Lookup</a>).
+To start Oscar with using the example policy, from the Oscar install
+directory type the following command:
+</p>
+
+<pre>
+<font color="000099">
+    java -Djava.security.manager
+         -Djava.security.policy=example.policy
+         -Dlib.dir=lib
+         -jar lib/oscar.jar
+</font>
+</pre>
+
+<p>
+This command starts Oscar with security enabled and using the example
+policy for granting permissions to loaded bundles. The additional <tt>-Dlib.dir=lib</tt>
+parameter allows the location of <tt>oscar.jar</tt> and <tt>osgi.jar</tt>
+to vary, but in this case they are in the default location. For
+further understanding, the example policy is reproduced here:</p>
+
+<pre>
+<font color="000099">
+	grant codeBase "file:bundle/shellgui.jar" {
+	  permission org.osgi.framework.ServicePermission "org.ungoverned.osgi.bundle.shellgui.Plugin", "get";
+	};
+
+	grant codeBase "file:bundle/shelltui.jar" {
+	  permission org.osgi.framework.ServicePermission "org.ungoverned.osgi.service.shell.ShellService", "get";
+	};
+
+	grant codeBase "file:bundle/shellplugin.jar" {
+	  permission java.security.AllPermission;
+	};
+
+	grant codeBase "file:bundle/bundlerepository.jar" {
+	  permission java.security.AllPermission;
+	};
+
+	grant codeBase "file:bundle/permissionmanager.jar" {
+	  permission java.security.AllPermission;
+	};
+
+	grant codeBase "file:bundle/shell.jar" {
+	  permission java.security.AllPermission;
+	};
+
+	grant codeBase "file:${lib.dir}/oscar.jar" {
+	  permission java.security.AllPermission;
+	};
+
+	grant codeBase "file:${lib.dir}/osgi.jar" {
+	  permission java.security.AllPermission;
+	};
+
+	grant codeBase "file:${lib.dir}/moduleloader.jar" {
+	  permission java.security.AllPermission;
+	};
+
+	grant {
+	  permission java.io.FilePermission "${user.home}${file.separator}.oscar${file.separator}-", "read, write, delete";
+	  permission org.osgi.framework.PackagePermission "*", "EXPORT";
+	};
+</font>
+</pre>
+
+<p>
+By examing each <tt>grant</tt> section of the example policy, it is possible
+to understand what the policy actually enforces. The first section grants
+the <tt>permissionmanager.jar</tt> bundle <tt>AllPermission</tt>, which
+means that it has permission to do everything. Likewise, in the second
+and third sections the Oscar and OSGi classes are also granted AllPermission,
+respectively, which allows them to do everything as well. The last section
+does not specify a code base, therefore it applies to all code, including
+all bundles; it grants all code permission to read, write, and delete
+from the Oscar configuration directory in the user's home directory and,
+specifically for bundles, the permission to export any package.<br>
+</p>
+
+<p>
+<i>Important: the <tt>FilePermission</tt> is actually too permissive in
+the example policy, since it lets any bundle access files anywhere in
+the Oscar configuration directory. To limit this, you could specify the
+actual profile name after the <tt>.oscar</tt> directory; to limit it
+even further you could specify a specific bundle code base and then specify
+the profile name and the actual bundle data directory; future versions
+of Oscar will handle file permissions in a more elegant and dynamic way.
+In the meantime, if specific permissions are required, then an example
+grant section for a bundle with ID 3 under profile "security" would look
+like this:</i>
+</p>
+
+<pre>
+<font color="000099">
+    grant codeBase "file:${user.home}/.oscar/security/bundle3/data/- " {
+       permission java.io.FilePermission "${user.home}/.oscar/-", "read, write, delete";
+    };
+</font>
+</pre>
+
+<p>
+<i>Important: the OSGi specification says that "export" <tt>PackagePermission</tt>
+implies "import" <tt>PackagePermission</tt>, so if a bundle has
+export permission it automatically has import permission, but the converse
+is not true.</i>
+</p>
+
+<a name="demo"></a>
+<h2>Security Demonstration</h2>
+
+<p>
+<i>Note 1: The following demonstration requires JDK 1.4 for dynamic security
+changes; when using a JDK version that is less than 1.4 the security
+changes are not dynamic and require that Oscar is restarted for the security
+changes to take affect.</i>
+</p>
+
+<p>
+<i>Note 2: The following example assumes that you are running Oscar from
+the installation directory. The <tt>permissionmanager.jar</tt> bundle actually
+modifies the <tt>example.policy</tt> when granting and denying permissions;
+it also saves its state in to its bundle cache data directory reflecting
+what it believes the current set of granted permissions are in the <tt>example.policy</tt>
+file.</i>
+</p>
+
+<p>
+Three bundles are used to demonstrate some of the security features,
+they are
+<a href="http://oscar-osgi.sf.net/repo/permissionmanager/">Permission Manager</a>,
+<a href="http://oscar-osgi.sf.net/repo/serviceregister/">Service Register</a>, and
+<a href="http://oscar-osgi.sf.net/repo/servicelookup/">Service Lookup</a>;
+these bundles are intended for education purposes only. Start Oscar using
+the command from the <a href="#example">previous</a> section and create a
+new profile, perhaps called <tt>security</tt>. Once Oscar is started,
+load the following four bundles from <tt>obr</tt> (this demonstration
+assumes that you have started Oscar from the Oscar install directory):
+</p>
+
+<pre>
+<font color="000099">
+    obr deploy "table layout"
+    obr deploy "permission manager"
+    obr deploy "service register"
+    obr deploy "service lookup"
+</font>
+</pre>
+
+<p>
+The first bundle, Table Layout, is simply a library that is
+needed by the other bundles to create their user interfaces. The
+Permission Manager bundle is a simple tool for dynamically
+administering <tt>ServicePermission</tt>s and it presents and user
+interface like this:
+</p>
+
+<p>
+<img src="pmbundle.jpg" alt="[permission manager]" width="320" height="231">
+</p>
+
+<p>
+The Permission Manager bundle displays a list of all installed
+bundles. By selecting a bundle from the list and typing in an interface
+name (or wildcard) and selecting a service action, it is possible to
+grant or deny <tt>ServicePermission</tt>s to the selected bundle. The
+Service Register bundle registers a simple service
+under the interface <tt>org.ungoverned.osgi.bundle.serviceregister.SimpleService</tt>
+and it presents a user interface like this:
+</p>
+
+<p>
+<img src="srbundle.jpg" alt="[service register]" width="279" height="149">
+</p>
+
+<p>
+The Service Register bundle displays buttons to register or
+unregister its service; it service is an interface that returns a string
+value. To set the string value returned by the service, use the text
+field provided in the user interface -- <i>after entering a string you
+must press the <tt> &lt;ENTER&gt;</tt> key to set the value</i>. The
+Service Lookup bundle tries to use the service provided
+by the Service Register bundle and it presents a user
+interface like this:
+</p>
+
+<p>
+<img src="slbundle.jpg" alt="[service lookup]" width="298" height="146">
+</p>
+
+<p>
+The Service Lookup bundle displays buttons to get and unget
+the service offered by Service Register; a button is also
+exists for retrieving the string value of the service and a text field
+is used to display the retrieved string value. Notice that the windows
+for Service Register and Service Lookup have
+a banner that reads "<i>Java Applet Window</i>", but the Permission Manager
+window does not. This is because the example policy file does not
+permit arbitrary code to display top-level windows without banners, but
+Permission Manager was granted <tt>AllPermission</tt>, so
+it does have permission to display top-level windows without banners.
+To display top-level windows without the warning banner, the policy file
+must grant the code source <tt>java.awt.AWTPermission</tt> with
+the target property name <tt>showWindowWithoutWarningBanner</tt>.
+Now that all of the bundles are started, the following steps walk through
+the remainder of the security demonstration.
+</p>
+
+<p>
+Initially, Service Register and Service Lookup
+do not have permission to register or get any services. An attempt
+to register the service in the Service Register user interface
+results in a security exception. On the otherhand, an attempt to get
+the service in the Service Lookup user interface does not
+result in an exception in the application code; this is important because
+the specification stipulates that bundles without permission should not
+be able to determine whether the service exists at all.
+</p>
+
+<p>
+First, grant Service Register permission to register its service
+by selecting it in the list of bundles in the Permission Manager
+user interface. To actually grant the permission to register its
+service type "<tt>org.ungoverned.*</tt>" into the <i>interface</i> text
+field, select the <i>register</i> checkbox, and click on the <i>grant</i>
+button; this allows the bundle to register any service that begins with
+the package name "<tt> org.ungoverned</tt>". Upon successful completion
+of this step, an attempt to register the service in the Service Register
+user interface should succeed and the lightbulb icon should turn on.
+</p>
+
+<p>
+At this point, it is possible for Service Register to register
+and unregister its service, but it is still not possible for Service Lookup
+to get the service. To grant permission to this bundle to get
+the service, select the Service Lookup bundle in the
+Permission Manager bundle's user interface. Type "<tt>org.ungoverned.*</tt>"
+into the <i>interface</i> text field, select the <i>get</i> checkbox,
+and click on the <i>grant</i> button; this allows the bundle to get
+any service that begins with the package name "<tt>org.ungoverned</tt>".
+Upon successful completion of this step, an attempt to get the service
+in the Service Lookup user interface should succeed and
+its globe icon should become enabled.
+</p>
+
+<p>
+To conclude the demonstration, enter a string into the string value text
+field of the Service Register user interface; make sure
+to press the <tt>&lt;ENTER&gt;</tt> key. Retrieve the entered string
+by clicking on the get string button in the Service Lookup
+user interface.
+</p>
+
+<a name="native"></a>
+<h2>Native Libraries</h2>
+
+<p>
+Bundles that load native libraries must have an additional runtime permission;
+the actual permission grant in the policy file should be in the form of:
+</p>
+
+<pre>
+<font color="000099">
+    grant codeBase "file:bundle/simple.jar" {
+      permission java.lang.RuntimePermission "loadLibrary.*";
+    };
+</font>
+</pre>
+
+<p>
+The above grant section permits the <tt>simple.jar</tt> code base to load
+any library; this could be further restricted by specify the name of
+the library, such as "<tt>loadLibrary.foo</tt>". The simple.jar bundle
+included with the Oscar example bundles uses a native library under Linux,
+so it can be used to experiment with native library permissions.
+</p>
+
+<a name="issues"></a>
+<h2>Security Issues</h2>
+
+<p>
+Certain areas of OSGi specification were either unclear or open
+to interpretation, so the resulting security behavior
+of Oscar may vary according to someone else's interpretation of the
+OSGi specification. Also, some difficulties pertaining to the JDK
+implementation were uncovered and work-arounds were needed to attain
+desired behavior. In particular, the following issues are important:
+</p>
+
+<ul>
+  <li>The framework maintains a cached set of service objects for
+      a bundle. Oscar assumes that if a bundle has a cached instance of a service
+      object, then no further <tt>ServicePermission</tt> checks are required.
+      This means that if a bundle's permission to get a service is dynamically
+      revoked, but the bundle has a cached instance of the service object, then
+      the bundle will still be able to access the service object. On the other
+      hand, if the bundle ungets all references to the service object so that
+      the framework releases the cached service object, then the bundle will
+      no longer be able to get the service object after a dynamic permission change.
+  </li>
+  <li>The handling of <tt>PackagePermission</tt>s is solely performed
+      during the process of resolving a bundle. This means that if a bundle
+      does not have permission to import or export the packages from its manifest,
+      then it will simply not resolve and thus cannot be activated. This approach
+      has implications on dynamic revoking of permissions; in particular, if
+      a bundle is resolved but later has its import permissions revoked, Oscar
+      still allows the bundle access to all the packages with which it was resolved
+      -- nothing else makes sense from my perspective.
+  </li>
+  <li>The approach to handling <tt>PackagePermission</tt>s also
+      leads to a possibly strange scenario: assume that a bundle exports a
+      particular package, but does not use that package itself. If this
+      bundle does not have export permission for the package, then it is
+      not possible to resolve and  activate the bundle, unless the bundle
+      is given import permission on the package it exports (even though
+      the bundle does not import the package in its manifest). This
+      results from the fact that export implies import for packages
+      according to the OSGi specification, so despite the fact that the 
+      bundle does not use the package, it must still have import
+      package permission for it.
+  </li>
+  <li>A potential bug was discovered in how the JDK handles permission
+      checks for <tt>URLConnection</tt> subclasses; Oscar uses a <tt>URLConnection</tt>
+      subclass to load resources from bundle JAR files. This bug pertains
+      to loading an icon into the constructor of <tt>javax.swing.ImageIcon</tt>
+      via <tt>getClass().getResource()</tt>. More specifically,
+      <tt>sun.awt.image.URLImageSource</tt>, which fetches the icon image
+      for <tt>ImageIcon</tt>, performs a socket security check on the URL
+      passed to the constructor of <tt>ImageIcon</tt>. I believe that this
+      is a bug, since other code in the JDK (namely
+      <tt>sun.awt.SunToolkit.getImageFromHash()</tt>) does not behave this
+      way. The end result is that an <tt>ImageIcon</tt> cannot load without
+      granting the bundle code source <i>resolve</i> <tt>SocketPermission</tt>;
+      this of course, does not make sense, but it is a reasonable work
+      around. Another work around it to open a connection to the URL
+      returned from <tt>getClass().getResource()</tt> directly
+      (e.g., <tt>url.openConnection()</tt>) and simply read the icon data
+      from the input stream into a byte buffer, then pass the byte buffer
+      to the <tt>ImageIcon</tt> constructor instead of the URL.
+  </li>
+</ul>
+
+<a name="feedback"></a>
+<h2>Feedback</h2>
+
+<p>
+Security functionality is has not been fully stressed tested, so there
+might some specification compliance issues worked out. If you have
+comments or suggestions, feel free to contact me at
+<a href="mailto:heavy@ungoverned.org">heavy@ungoverned.org</a>.
+
+<p>Richard S. Hall </p>
+
+</font>
+</body>
+</html>

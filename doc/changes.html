@@ -1,0 +1,1250 @@
+<!DOCTYPE doctype PUBLIC "-//w3c//dtd html 4.0 transitional//en"><html><head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Richard S. Hall"><title>Oscar Changes</title></head>
+
+<body text="#000000" bgcolor="#ffffff" link="#0000ee" vlink="#551a8b" alink="#ff0000">
+<font face="sans-serif">
+
+<h2>Oscar Changes</h2>
+
+<tt>Release version: 1.0.5 - May 13, 2005</tt>
+
+<ul>
+  <li>Modified the <tt>PackageAdmin</tt> service to queue subsequent
+      refresh requests, rather than block them.
+  </li>
+  <li>Modified <tt>ModuleClassLoader</tt> and <tt>URLPolicy</tt> to support
+      <tt>ClassLoader.getResources()</tt>. This also required modification
+      to the URL handler.
+  </li>
+  <li>Made class loading more strict, such that a request for a class or
+      resource from an imported package now fails immediately if the target
+      is not found in the exporting bundle; previously, if the target was
+      not found in the exporting bundle the search would continue to
+      the importing bundle's local class path.
+  </li>
+  <li>Fixed a bug in the <tt>StartLevel</tt> service implementation where the
+      the security and parameter value checks for <tt>setStartLevel()</tt>
+      were occurring too late. The result was that if any exceptions were
+      thrown, they were thrown to the <tt>StartLevel</tt> thread, which
+      caused it to exit its <tt>run()</tt> method. The checks were moved
+      before the caller thread delegates to the <tt>StartLevel</tt> thread.
+  </li>
+  <li>Modifed native library manifest header parsing to <b>not</b> expect
+      a leading '/' character in the native library name; instead, it
+      assumes that tokens without a '=' character in them are native library
+      names.
+  </li>
+  <li>Rewrote a previous fix in LDAP filter evaluation that evaluated
+      subexpressions containing attributes that do not exist to <tt>false</tt>.
+      The previous fix did not work in all cases and the new approach
+      appears to be a little cleaner.
+  </li>
+  <li>Improved the error message used when an error occurred while trying
+      to cache a bundle.
+  </li>
+</ul>
+
+<tt>Release version: 1.0.4 - February 18, 2005</tt>
+
+<ul>
+  <li>Added bundle install/update support for HTTP proxy authentication
+      using the <tt>http.proxyAuth</tt> system property; see the
+      <a href="usage.html#proxy">usage documentation</a>
+      for more information. These changes were donated by Erik Wistrand.
+  </li>
+  <li>Included updated version of OBR, replacing the invalid version of
+      OBR from the last release.
+  </li>
+</ul>
+
+<tt>Release version: 1.0.3 - January 21, 2005</tt>
+
+<ul>
+  <li>All synchronous events are now delivered regardless of the
+      state of the bundle, where asynchronous events are still only
+      delivered if the bundle is active.
+  </li>
+  <li>Modified how the LDAP evaluator evaluates expressions that
+      reference attributes that do not exist. Previously in such
+      a scenario the entire expression evaluated to <tt>false</tt>,
+      but now only the sub-expression containing the non-existent
+      attribute evaluates to <tt>false</tt> and the remainder of
+      the expression evaluates normally.
+  </li>
+  <li>Modified bundle resource URL creation to prefix a "/" to the
+      resource name if it did not already have one, otherwise the
+      string representation of the resulting URL would not have a
+      "/" separating the host from the file.
+  </li>
+  <li>Modified service selection algorithm to correctly assign a default
+      ranking of zero to service references that have no ranking specified.
+  </li>
+</ul>
+
+<tt>Release version: 1.0.2 - October 8, 2004</tt>
+
+<ul>
+  <li>Fixed an obscure bug that caused a bundle's state to revert to
+      <tt>RESOLVED</tt> if it were updated while in the <tt>INSTALLED</tt>
+      state and the framework was not refreshed.
+  </li>
+  <li>Fixed a bug in calculating the package name of a resource if the
+      resource started with a "<tt>/</tt>" character, which would cause
+      the resource load to fail.
+  </li>
+  <li>Fixed a bug in start level processing where persistent start levels
+      were being reset to the initial start level value upon reactivation.
+  </li>
+  <li>Modified <tt>BundleContext.getService()</tt> and
+      <tt>BundleContext.ungetService()</tt> to throw a
+      <tt>NullPointerException</tt> when a <tt>null</tt> reference
+      is passed in; this change was done to be consistent with
+      other framework implementations, although it is not clear
+      from the specification if this is the required behavior.
+  </li>
+  <li>Fixed a bug in service registration that led to a
+      <tt>NullPointerException</tt> if the class of the registered
+      service object was loaded by the system class loader.
+  </li>
+  <li>Improved and fixed LDAP parser and expression evaluation,
+      including:
+      <ul>
+        <li>Added special case support for <tt>Boolean</tt> as values,
+            since it does not implement <tt>Comparable</tt>.
+        </li>
+        <li>Added special case support for <tt>Character</tt> as values,
+            since it does not implement a constructor that takes
+            a <tt>String</tt>.
+        </li>
+        <li>Added support for arrays of primitives as values.
+        </li>
+        <li>Added support for <tt>Vector</tt> as values.
+        </li>
+        <li>Added support for <tt>BigInteger</tt> and <tt>BigDecimal</tt>
+            as values.
+        </li>
+        <li>Fixed bug in approximate comparisons when dealing with
+            negative numbers.
+        </li>
+        <li>Fixed some bugs in the LDAP parser where the left-hand-side
+            and right-hand-side of filter comparisons were swapped.
+        </li>
+        <li>Modified LDAP parser to not use reflection classes for arrays,
+            since the reflection packages are not available in limited Java
+            execution profiles.
+        </li>
+      </ul>
+  </li>
+  <li>Modified <tt>example.policy</tt> file to make it work better with
+      the GUI shell bundles and Windows.
+  </li>
+  <li>Fixed a small bug with native libraries that resulted in an
+      unsatisfied link error if you specified a relative path name
+      for the cache or profile directory.
+  </li>
+  <li>Moved exception rethrow in <tt>Oscar.updateBundle()</tt>.
+  </li>
+  <li>Moved firing of <tt>UPDATED</tt> event in <tt>Oscar.updateBundle()</tt>.
+  </li>
+  <li>Modified the clean up if an exception is thrown in
+      <tt>BundleActivator.start()</tt> to ensure that any actions
+      performed by the bundle are undone.
+  </li>
+  <li>Modified bundle manifest header parsing to throw an exception
+      if the import, export, or dynamic import values are an empty string.
+  </li>
+  <li>Modified <tt>Bundle.start()</tt> and <tt>Bundle.stop()</tt> because
+      exceptions required by the specification were being hidden by
+      exceptions thrown at higher levels.
+  </li>
+  <li>Modified <tt>BundleContext.ungetService()</tt> return value to
+      properly return <tt>false</tt> when the service usage count goes
+      to zero.
+  </li>
+  <li>Removed a couple of references to Java APIs that were introduced
+      in JDK 1.4 to make it possible to compile Oscar with JDK 1.3.x.
+  </li>
+</ul>
+
+<tt>Release version: 1.0.1 - July 1, 2004</tt>
+
+<ul>
+  <li>Fixed a bug that was not correctly cleaning up after a bundle
+      resolve exception occurred; in some situations this could lead
+      to <tt>NoClassDefFoundError</tt>s when the bundle was eventually
+      resolved and activated.
+  </li>
+  <li>Fixed a bug in dynamic package importing that could lead to
+      <tt>NoClassDefFoundError</tt>s when updating a bundle with
+      dynamic imports.
+  </li>
+  <li>Modified the <tt>PackageAdmin</tt> implementation so that it fires
+      a <tt>PACKAGES_REFRESHED</tt> event, even if there are no packages
+      to refresh.
+  </li>
+  <li>Included the latest versions of the Bundle Repository and Shell
+      Plugin bundles.
+  </li>
+</ul>
+
+<tt>Release version: 1.0.0 - June 13, 2004</tt>
+
+<ul>
+  <li><b>Changes to the framework:</b>
+  </li>
+
+  <ul>
+    <li><b>IMPORTANT!</b> The profile cache directory structure has changed
+        in this version of Oscar; this was necessary to support a change in
+        bundle update behavior. As a result, old profile cache directories
+        cannot be used and must be recreated. It is possible to convert your
+        existing profile directories if you so desire; see the
+        <a href="cache.html">bundle caching document</a> for details. Also,
+        bundle-related state information is now saved in plain text so that
+        it can be easily read and edited.
+    </li>
+    <li><b>IMPORTANT!</b> Building Oscar now requires Ant 1.6.
+    </li>
+    <li>Modified bundle update behavior so that it effectively takes place
+        immediately; i.e., the updated revision of the bundle is executing
+        after the call to <tt>Bundle.update()</tt> returns. The old revision
+        of the bundle is not actually removed at this point, since Oscar must
+        keep its old packages around until a refresh or shutdown is performed;
+        thus, any exported packages from older revisions are still exported
+        until one of these two events occurs, at which time all old revisions
+        are purged from the bundle cache. If the updated bundle requires newer
+        versions of packages that are exported by older revisions, then a
+        resolve exception will be thrown when trying to activate the updated
+        bundle.
+    </li>
+    <li>Modified bundle uninstall behavior so that it effectively takes palce
+        immediately; i.e., you can install the same bundle immediately after
+        uninstalling it. Uninstalled bundles are not actually removed until a
+        refresh or shutdown is performed; thus, any exported packages are
+        still exported until one of these two events occurs, at which time the
+        bundle is actually removed from the bundle cache.
+    </li>
+    <li>Modified <tt>FrameworkListener</tt>, <tt>BundleListener</tt>, and
+    	<tt>ServiceListener</tt> registration to comply with the
+    	specification. Duplicate <tt>FrameworkListener</tt> or
+    	<tt>BundleListener</tt> registrations are ignored, while
+    	duplicate <tt>ServiceListener</tt> registration resets the
+    	old filter to the new filter. <b>IMPORTANT!</b> This may break
+    	code that previous registered duplicate event listeners.
+    </li>
+    <li>Introduced the <tt>BundleCache</tt> and <tt>BundleArchive</tt> interfaces
+        to better abstract how Oscar caches bundles; this new approach makes
+        Oscar completely separable from its bundle cache. The classes
+        <tt>DefaultBundleCache</tt> and <tt>DefaultBundleArchive</tt> 
+        implement Oscar's default file-based bundle cache. <b>IMPORTANT!</b>
+        This change resulted in changes to all cache-related configuration
+        properties, which are now:
+        <ul>
+            <li><tt>oscar.cache.bufsize</tt> - Sets the buffer size to be used by
+                the cache; the default value is 4096.
+            </li>
+            <li><tt>oscar.cache.dir</tt> - Sets the cache directory for
+                <tt>DefaultBundleCache</tt> instance; defaults to
+                <tt>~/.oscar</tt>. This property did not exist in previous
+                versions of Oscar.
+            </li>
+            <li><tt>oscar.cache.profile</tt> - Sets the profile name for
+                the <tt>DefaultBundleCache</tt> instance; there is no
+                default for this property. This property was called
+                <tt>oscar.profile.name</tt> in previous versions of Oscar.
+            </li>
+            <li><tt>oscar.cache.profiledir</tt> - Sets the profile directory
+                for the <tt>DefaultBundleCache</tt> instance; defaults to
+                <tt>${oscar.cache.dir}/${oscar.cache.profile}</tt> (i.e.,
+                the default profile directory is the name of the profile in
+                the cache directory). This property was called
+                <tt>oscar.profile.dir</tt> in previous versions of Oscar.
+                If this property is specified, then <tt>oscar.cache.dir</tt>
+                and <tt>oscar.cache.profile</tt> are ignored, since
+                their only purpose is for creating the profile directory. 
+             </li>
+         </ul>
+        See the <a href="cache.html">bundle caching document</a> and the
+        <a href="usage.html#configuring-oscar">usage documention</a> for
+        more information about these properties and how to set them.
+    </li>
+    <li>Fixed a long-standing issue that would cause an exception during a
+        refresh when refreshing a bundle with a native library that was
+        being refreshed because it was dependent on an updated or deleted
+        bundle. The exception was due to not being able to re-load the
+        native library since it was associated with the bundle's old class
+        loader. The bundle cache now refreshes (i.e, renames)
+        the bundle directory for all refreshed bundles, which eliminates
+        the problem of re-loading the native library.
+    </li>
+    <li>Modified service registration to use the class loader of the service
+        object when verifying that the service object is assignable to the
+        classes and interfaces mentioned in the <tt>objectClass</tt> property.
+        Previous versions of Oscar used the class loader of the registering
+        bundle for the classes and interfaces in <tt>objectClass</tt>, which
+        limited the ability of third parties to register services on behalf
+        of another bundle; section 4.22.8 of the OSGi specification (version 3)
+        clarifies this situation a little, although it still does not precisely
+        mentioned where to look for the classes.
+    </li>
+    <li>Modified the <tt>PackageAdmin</tt> service to only return packages that
+        are actually selected for export, as opposed to also returning packages
+        that are merely offered for export, per the specification.
+    </li>
+    <li>Fixed a bug that caused a bundle's active persistent state to get reset to
+        inactive when it was refreshed, if the bundle was currently inactive
+        because its start level was less than the framework's start level.
+    </li>
+    <li>Unified property key handling by implementing a <tt>CaseInsensitiveMap</tt>,
+        so now both bundle properties and service properties are case insensitive;
+        previously only bundle properties were case insensitive.
+    </li>
+    <li>Implemented <tt>ServiceRegistration.setProperties()</tt>.
+    </li>
+    <li>When registering a service, Oscar now makes a copy of the passed
+        in dictionary to be safe from subsequent modifications.
+    </li>
+    <li>Service events are now dispatched synchronously as required by the
+        specification (version 3); see the next change note for changes
+        related to this one.
+    </li>
+    <li>Modified <tt>ServiceReferenceImpl</tt> and <tt>ServiceRegistrationImpl</tt>
+        to simplify how <tt>getService()</tt> and <tt>ungetService()</tt> are
+        implemented (e.g., they no longer need to scan the service registry) and
+        to make it possible to get service objects during the service
+        unregistration process.
+    </li>
+    <li>Modified native library meta-data parsing to accept quoted strings
+        as values for the native library properties.
+    </li>
+    <li>Modified dynamic class importing to accept "*" as a valid
+         import package.
+    </li>
+    <li>Simplified, yet again, the concurrency handling aspects of Oscar;
+        this should be the last time I address this issue, since any further
+        simplification would be too restrictive.
+    </li>
+    <li>Modified LDAP parser to support more operators and to support
+        property values that implement the <tt>Comparable</tt> interface,
+        per the specification; thanks to Humberto Cervantes.
+    </li>
+    <li>Modified LDAP expression evaluator to use short-circuited evaluation
+        for '&' and '|' operators.
+    </li>
+    <li>Modified LDAP parser to throw a syntax exception if there are
+        extra characters after the final closing parenthesis; previously
+        they were simply ignored.
+    </li>
+    <li>Eliminated the possibility to have configuration property files in each
+        profile directory, since no one was using this feature and a similar
+        effect can be accomplished with a system property.
+    </li>
+    <li>Modified Oscar configuration property handling. If Oscar's constructor
+        is passed in an instance of <tt>Properties</tt>, then Oscar will
+        only use the properties it contains for its configuration. If the
+        Oscar constructor is not passed in a <tt>Properties</tt> instance,
+        then Oscar will use <tt>System.getProperty()</tt> to find its
+        configuration properties.
+    </li>
+    <li>Fixed a bug in the shell <tt>exports</tt> command that resulted in
+        a null pointer exception if the command was executed when there
+        were stale packages, such as after an uninstall or update.
+    </li>
+  </ul>
+
+  <li><b>Changes to bundles and supporting code:</b>
+  </li>
+  <ul>
+    <li>Changed some shell command names and syntax. In particular,
+        the <tt>exports</tt> command was renamed to <tt>packages</tt>,
+        the <tt>info</tt> command was replaced by the <tt>headers</tt>
+        command and its service property retrieval functionality was moved
+        to the <tt>services</tt> command. The <tt>services</tt> command
+        was also extended to display used services as well as registered
+        services. Finally, the syntax of the <tt>bundlelevel</tt>
+        command was altered to support setting the start level for
+        multiple bundles at one time.
+    </li>
+    <li>Renamed package <tt>org.ungoverened.oscar.service</tt> to
+        <tt>org.ungoverned.osgi.service</tt>; this better separates
+        the shell and bundle repository service from the framework
+        implementation. <b>IMPORTANT!</b> This change impacts all
+        bundles that use any of Oscar's special services, such as
+        bundles using the shell service to register custom shell
+        commands. All such bundles must be modified to use the new
+        package names for service lookup.
+    </li>
+    <li>Renamed package <tt>org.ungoverned.oscar.bundle</tt> to
+        <tt>org.ungoverned.osgi.bundle</tt>; this better separates
+        the example bundles from the framework implementation.
+    </li>
+    <li>The bundle repository bundle was nearly completely rewrittern.
+        The <tt>obr</tt> command shell has been completely
+        rewritten to have a more flexible and meaningful syntax.
+        The bundle repository implementation now uses an XML-based
+        file, thanks to Didier Donsez.
+    </li>
+    <li>Fixed a bug in the <tt>shelltui.jar</tt> bundle that would
+        throw an null pointer exception if you typed an EOF character
+        at the shell prompt.
+    </li>
+    <li>Modified the <tt>ps</tt> shell command to display the version of
+        the bundle, if present, since this will be useful for the new
+        <tt>obr</tt> command that is version-aware.
+    </li>
+    <li>Not that anyone cares, but Oscar's installer has been significantly
+        improved from a design point of view; it kicks some serious butt now.
+    </li>
+    <li>Modified the install process to allow the user to select either
+        a text-based or GUI-based shell.
+    </li>
+    <li>Fixed some bugs in the Log Service implementation.
+    </li>
+    <li>Renamed the log, telnetd, and xmlrpc bundles by removing the
+        "<tt>openosgi-</tt>" prefix.
+    </li>
+    <li>Fixed an issue with the HTTP Service where Jetty was trying to
+        load a registered servlet's class; Jetty does not need to load the
+        registered servlet's class since it already has an instance.
+    </li>
+  </ul>
+
+</ul>
+
+<tt>Release version: 0.9.4a - November 27, 2003</tt>
+<ul>
+  <li>Fixed, once and for all, a bug that caused problems when refreshing
+      under Windows due to unclosed embedded JAR files.
+  </li>
+  <li>Fixed a typo that was incorrectly initializing the OSGi strictness
+      flag.
+  </li>
+</ul>
+
+<tt>Release version: 0.9.4 - November 14, 2003</tt>
+<ul>
+  <li>Introduced an implementation of the Start Level service from the OSGi
+      3 specification; this also introduced some new shell commands for
+      interacting with the Start Level service. The new shell commands
+      are:
+      <ul>
+        <li><tt>startlevel</tt> - to get/set the framework's start level.
+        </li>
+        <li><tt>bundlelevel</tt> - to get/set a bundle's start level.
+        </li>
+      </ul>
+      The <tt>ps</tt> command was also altered to display start level
+      information. Further, two new properties were introduced to control
+      the default values of the Start Level service; these are:
+      <ul>
+        <li><tt>oscar.startlevel.framework</tt> - the initial start level
+            of the framework at startup; the default value is 1.
+        </li>
+        <li><tt>oscar.startlevel.bundle</tt> - the default start level into
+            which bundles are installed; the default value is 1.
+        </li>
+      </ul>
+      The auto-install and auto-start properties were also modified to
+      support start levels. Now it is possible to append a start level
+      to the auto-install and auto-start properties to indicate into which
+      start level the specified bundles should be placed (e.g.,
+      <tt>oscar.auto.install.2</tt> or <tt>oscar.auto.start.1</tt>). These
+      variants are processed in sequence until a successor
+      cannot be found. If no start level is specified on the auto property,
+      then the bundles will be installed into start level 1.
+      As always, these framework properties can be specified on the command
+      line or using the <tt>system.properties</tt> file in the <tt>lib</tt>
+      directory of your Oscar installation; see the usage documention on
+      <a href="usage.html#configuring-oscar">configuring Oscar</a> for more
+      information.
+  </li>
+  <li>Added functionality to the Oscar Bundle Repository bundle to allow you
+      to specify a space-delimited list of URLs to bundle repository files.
+      The bundle repository URL can be specified three ways:
+      <ul>
+        <li>via the <tt>oscar.bundle.bundlerepository.url</tt> property on
+            the command line,
+        </li>
+        <li>via the <tt>oscar.bundle.bundlerepository.url</tt> property
+            in the <tt>bundle.properties</tt> file in the <tt>lib</tt>
+            directory of the Oscar installation directory (see the usage
+            documention on <a href="usage.html#configuring-bundles">configuring bundles</a>
+            for more information), or
+        </li>
+        <li>by using the <tt>obr -u</tt> command in the Oscar shell (this
+            can also be used to refresh the cached bundle repository files).
+        </li>
+      </ul>
+      The URLs can be either remote or local. These changes were donated by
+      Michel D'Hooge.
+  </li>
+  <li>Added functionality to the Oscar Bundle Repository bundle to
+      automatically install and start a bundle and all of its dependencies.
+      This change was donated by Michel D'Hooge.
+  </li>
+  <li>Changed and simplified the Oscar constructors; rather than take
+      explicit parameters, the constructor now takes a <tt>Properties</tt>
+      instance, which will hopefully be more flexible for adding new
+      parameters in the future without breaking existing source code.
+  </li>
+  <li>Oscar previously re-used <tt>BundleActivator</tt> instances, but the
+      OSGi 3 specification now clearly states that activator instances
+      should never be used again after <tt>stop()</tt> has been called;
+      Oscar's behavior was modified to match the specification.
+  </li>
+  <li>Refreshing updated bundles under Windows was broken in the preliminary
+      versions of <tt>0.9.4</tt> because the bundle JAR files were not being
+      closed before attempting to delete them. This is now fixed.
+  </li>
+  <li>Also related to the package refresh fix for Windows mentioned above,
+      modified the refresh routine to ensure that all bundles affected by
+      the refresh are completely re-initialized, whether the refresh succeeds
+      or fails; this should provide better robustness in case of a failure.
+  </li>
+  <li>Modified native library manifest entry parsing to allow a property
+      (e.g., operating system) to have multiple values. Here is an example:
+      <pre>
+          Bundle-NativeCode: /lib/libfoo.so;osname=Win98;
+           osname=Win2000;osname=WinXP;processor=x86</pre>
+  </li>
+  <li>Modified Oscar to not exit the JVM even if an error is thrown if
+      the "embedded" flag is set.
+  </li>
+  <li>Modified the LDAP package to throw an <tt>AttributeNotFoundException</tt>
+      when evaluating a filter that references attributes that are not found
+      in the attribute dictionary (i.e., the attributes associated with a
+      service reference); this does not impact the behavior of Oscar.
+  </li>
+  <li>Incorrectly stated in the last release that a fix was included
+      for a bug that <i>always</i> included the bundle JAR file in the bundle
+      class path, but the fix was not implemented; now this is really fixed.
+  </li>
+  <li>Added URL Handlers service activator to its manifest file and moved it
+      into the <tt>bundle</tt> package; this was missed in the last release
+      when the URL handlers service was moved from the Oscar core to a
+      separate bundle.
+  </li>
+  <li>Added the Wire Admin service classes to the <i>OSGi Service</i>
+      library bundle.
+  </li>
+  <li>Removed the unneeded <tt>LibraryEntry</tt> class.
+  </li>
+  <li>Updated documentation and added a new document describing how to
+      use Oscar with Eclipse; the Eclipse document was donated by
+      Michel D'Hooge.
+  </li>
+</ul>
+
+<tt>Release version: 0.9.4pre2 - September 1, 2003</tt>
+<ul>
+  <li>Modified <tt>ModuleClassLoader</tt> to override both <tt>loadClass()</tt>
+      and <tt>getResource()</tt> from <tt>ClassLoader</tt>. These methods
+      now delegate to the search policy, which eliminates the need for a
+      lock on the module manager in order to eliminate some dead lock
+      situations. Thanks to Rob Walker (robw@ascert.com) for helping to
+      track down some of these issues.
+  </li>
+  <li>Modified <tt>ModuleClassLoader</tt> to use the class loader that
+      loaded it as its parent, not the system class loader.
+  </li>
+  <li>Modified <tt>CompatibilityPolicy</tt> to accept import/export
+      identifiers in addition to import/export version numbers; this was done
+      to eliminate the assumption that import/export identifiers are always
+      compared using <tt>equals()</tt>, now the policy can decide how to
+      compare identifiers.
+  </li>
+  <li>Modified <tt>LocalCache</tt> to have a modifiable buffer size and to use
+      buffered input and output streams. The default buffer size is 4096 bytes,
+      use the system property <tt>oscar.cache.bufsize</tt> to change this value.
+  </li>
+  <li>Modified bundle manifest processing to allow a leading slash ('<tt>/</tt>') when
+      specifying embedded JAR files on the bundle class path.
+  </li>
+  <li>Fixed a bug introduced in the last release that was always adding the bundle
+      JAR file to the bundle's class path, even when it wasn't specified.
+  </li>
+  <li>Fixed a small bug that occasionally left the System Bundle in the
+      <tt>RESOLVED</tt> state instead of the <tt>ACTIVE</tt> state.
+  </li>
+  <li>Fixed a bug in event dispatching that was causing
+      <tt>SynchronousBundleListener</tt>s to not receive events.
+  </li>
+  <li>Fixed a bug in <tt>OscarDispatchQueue</tt> that could have led to
+      problems if two threads fired an event at the same time.
+  </li>
+  <li>Moved the URL Handlers service out of the Oscar core and made it
+      a separate bundle.
+  </li>
+  <li>Created a new bundle, called <tt>OSGi Utils</tt>, that contains
+      all OSGi interfaces and classes in the <tt>org.osgi.util</tt>
+      package; moved <tt>ServiceTracker</tt> out of the core JAR framework
+      JAR files and placed them in this bundle. This means that the
+      <tt>ServiceTracker</tt> is not available by default and the
+      <tt>OSGi Utils</tt> bundle must be installed from <tt>obr</tt>
+      to use it.
+  </li>
+  <li>Modified processing of <tt>system.properties</tt> so that it supports
+      system property variable substitution, just like the <tt>bundle.properties</tt>
+      file.
+  </li>
+  <li>Modified the <tt>ImportSearchPolicy.validated()</tt> method to fire
+      <i>validated</i> events outside of its synchronized block to avoid some
+      concurrency issues.
+  </li>
+  <li>Fixed a small bug that causes the package version number to be printed
+      incorrectly in the error message that occurred when a bundle could not
+      be resolved.
+  </li>
+</ul>
+
+<tt>Release version: 0.9.4pre1 - June 25, 2003</tt>
+<ul>
+  <li>This release represents a major re-engineering effort of Oscar.
+  </li>
+  <li>The <tt>ModuleLoader</tt> project is used to handle all
+      class, resource, and native library loading.
+  </li>
+  <li>Concurrency control was majorly re-worked in an effort to
+      simplify it.
+  </li>
+  <li>Reorganized bundle state management by grouping all bundle state
+      into a single class, called <tt>BundleInfo</tt>.
+  </li>
+  <li>The OSGi interface and class definitions provided by the
+      OSGi organization are now used.
+  </li>
+  <li>Modified the simple bundle example to demonstrate dynamic package
+      import.
+  </li>
+</ul>
+
+<tt>Release version: 0.9.3c - June 16, 2003</tt>
+<ul>
+  <li>Re-fixed the class loading bug that was supposed to be fixed in
+      version <tt>0.9.3b</tt>; the previous fix introduced another bug
+      that would result in sporadic class not found expeptions. The bug
+      was a result of an optimization gone bad, which attempted to short
+      circuit import/export seaching in <tt>BundleClassLoader.findClass()</tt>.
+      I am confident that this is the final fix for this bug.
+  </li>
+  <li>Updated security policies since they were out-of-date with respect to
+      the changes introduced with the shell service in version <tt>0.9.1</tt>;
+      this also included adding a privileged action to the shell service itself.
+  </li>
+  <li>Fixed some bugs in the LDAP query parser that caused it to not recognize
+      some operators correctly; also added support for embedded spaces in the
+      attribute name. These changes where contributed by Dennis Heimbigner.
+  </li>
+  <li>Manifest key values are now trimmed when read, so that leading and trailing
+      spaces are ignored.
+  </li>
+  <li>Renamed the HttpService interface method from <tt>createDefaultContext()</tt>
+      to <tt>createDefaultHttpContext()</tt>.
+  </li>
+  <li>Updated HttpService to use Jetty 4.2.10pre1, which contains some bug
+      fixes for Jetty.
+  </li>
+  <li>The HttpService manifest file now dynamically imports <tt>javax.net.ssl</tt>.
+  </li>
+</ul>
+
+<tt>Release version: 0.9.3b - May 26, 2003</tt>
+<ul>
+  <li>Fixed a simple class loading bug that arose from a check on
+      an improperly initialized variable, which could result in spurious
+      class not found or class cast exceptions; this bug was introduced
+      in the 0.9.3 release of Oscar.
+  </li>
+  <li>Automatically strips leading '<tt>/</tt>' from bundle resource requests.
+  </li>
+  <li>Fixed a security-related bug that was not testing the correct
+      code base URL for dynamic package import.
+  </li>
+  <li>Fixed another security-related bug that caused a null pointer exception
+      if you tried to retrieve a service without specifying a service
+      inteface with the security manager enabled.
+  </li>
+</ul>
+
+<tt>Release version: 0.9.3a - April 14, 2003</tt>
+<ul>
+  <li>Minor change to fix a null pointer bug in Service Tracker when
+      the filter is null.
+  </li>
+  <li>Forgot to undo modifications to the <tt>simple.jar</tt> bundle
+      while I was testing dynamic package import; these changes are now
+      undone.
+  </li>
+  <li>Simplified <tt>DynamicPackageDeclaration</tt> class.
+  </li>
+  <li>Modified the <tt>servlet.jar</tt> bundle manifest to export version
+      <tt>2.3.0</tt> of the Servlet API.
+  </li>
+</ul>
+
+<tt>Release version: 0.9.3 - April 11, 2003</tt>
+<ul>
+  <li>Changed Oscar's license to the Apache Software License, although
+      some bundles remain under the GNU Public License.
+  </li>
+  <li>Implemented dynamic package importing; see page 48 in the 3.0 version
+      of the OSGi specification. This uses a new bundle manifest entry,
+      called <tt>DynamicImport-Package</tt>, to allow bundles to dynamically
+      import packages, which can be useful when classes are passed in via
+      configuration files (as might be necessary with JDBC drivers). Bundles
+      using this feature should be prepared to catch
+      <tt>ClassNotFoundException</tt>s.
+  </li>
+  <li>Upon completion of a package refresh, the framework now fires a
+      <tt>FrameworkEvent.PACKAGES_REFRESHED</tt> event, per the
+      OSGi 3.0 specification. Related to this, the
+      <tt>PackageAdmin.refreshPackages()</tt> method was modified to
+      return immediately if a refresh is already in progress. Previously,
+      the calling thread was blocked until the in-progress refresh was
+      completed, then another refresh was issued. The specification does
+      not precisely say how to handle this situation.
+  </li>
+  <li>Added an initial implementation of the OSGi 3.0 URL Stream Handlers
+      service, including example bundles. Contributed by Stephane Chomat.
+  </li>
+  <li>Property handling was re-worked for simplicity and consistency;
+      properties are now dividied into system properties and bundle
+      properties, each of which are read from separate property
+      files. Refer to the <a href="usage.html">usage document</a> for
+      complete details.
+  </li>
+  <li>Re-worked the Oscar constructors to eliminate duplicated code
+      and to use the new system properties.
+  </li>
+  <li>The auto-install and auto-start properties can now handle paths
+      that have spaces; simply place quotes around such paths.
+  </li>
+  <li>Fixed a specification compliance issue regarding
+      <tt>BundleContext.getService()</tt>. The specification says this method
+      should return <tt>null</tt> for a given service if it is unregistered,
+      but Oscar would previously return non-<tt>null</tt> if the service object
+      was in the service usage cache. Oscar now returns <tt>null</tt>.
+  </li>
+  <li>If a security manager is installed, Oscar now checks for permission
+      to retrieve a service on every call to <tt>BundleContext.getService()</tt>,
+      even if the service is already cached. This affects situations where
+      permissions change dynamically at run time.
+  </li>
+  <li>A problem exists when a bundle location is not a URL. In <tt>BundleClassLoader</tt>,
+      each loaded class has a <tt>CodeSource</tt> attached to it so that the Java
+      security infrastructure can determine from where the class originated. The
+      code source is based on a valid URL. Previously, if the location of a bundle
+      was not a valid URL an exception would be thrown. Now, the class loader
+      tries to generate a fake URL if the bundle location is not an URL. The fake
+      URL is generated like this:
+      <pre>
+          "location://" + bundle.getLocation()</pre>
+      This is not a general solution, since the result may still be an malformed
+      URL, but it at least makes more cases successful and it also makes it
+      easy to grant permissions to such bundles in security policy files. In
+      the future, maybe a better algorithm for generating predictable fake
+      URLs will be introduced.
+  </li>
+  <li>Fixed a specification compliance issue for parsing native library
+      manifest entries; now you can have multiple libraries in one attribute,
+      but each library <b>must</b> begin with a "/" character, e.g.:
+      <pre>
+          Bundle-NativeCode: /lib/libfoo.so;/lib/libbar.so;osname=Linux;processor=x86,
+                             /lib/foo.dll;/lib/bar.dll;osname=WinXP;processor=x86</pre>
+  </li>
+  <li>Created a new <tt>oscar-svc.jar</tt> bundle that contains all of
+      the OSGi service API classes; this is mostly useful for bundle
+      developers since <tt>osgi.jar</tt> does not include the service
+      API classes.
+  </li>
+  <li>Added API documentation to OSGi service classes, but this work was for
+      naught since OSGi now includes source code for the standard classes.
+  </li>
+  <li>Fixed a small bug in <tt>SystemBundle</tt> where it was not properly
+      exporting its framework packages due to a cut-and-paste bug in the array
+      initialization.
+  </li>
+  <li>Fixed two bugs in the <tt>ServiceTracker</tt> that caused it to
+      essentially always return <tt>null</tt> when retrieving services;
+      not that it matters, everyone should be using the
+      <a href="http://gravity.sf.net/servicebinder/">Service Binder</a>
+      anyway. ;^)
+  </li>
+  <li>Fixed a bug in circular import package resolution that did not always
+      clean up its state in the case of a failure.
+  </li>
+  <li>Modified the <tt>obr</tt> command to display the help message when
+      no parameters are specified, to use all tokens for matching when
+      performing a query, and to only show bundle names in the query results.
+  </li>
+  <li>The <tt>tablelayout.jar</tt> bundle is now included in the Oscar
+      core; it was mistakenly left out since it is required by the
+      Oscar GUI shell.
+  </li>
+  <li>Property names for LDAP filters can now have "-" and "_" characters
+      in them.
+  </li>
+  <li>Updated the HTTP Service to use the JDK1.2 targetted version of Jetty;
+      thus, the HTTP Service should work on JVMs greater than or equal to
+      version 1.2.
+  </li>
+  <li>Removed some bundles from the release package that were related to
+      my Gravity research project and modified the bundle documentation
+      accordingly; these bundles will be made available with Gravity when
+      it is officially released.
+  </li>
+  <li>Added links to some third-party bundles in the bundle documentation;
+      these bundles are also available via the Oscar Bundle Repository.
+  </li>
+</ul>
+
+<tt>Release version: 0.9.2 - November 26, 2002</tt>
+<ul>
+  <li>Implemented a simple bundle repository service that allows you to
+      download the example bundles directly off the Oscar Web page;
+      this service automatically resolves bundle package dependencies.
+      A shell command for use with Oscar's shell service is also provided;
+      at the Oscar shell prompt, type "<tt>obr -help</tt>" for details.
+  </li>
+  <li>Modified the Oscar release package as a result of the bundle
+      repository mentioned above. The pre-built package of all bundles
+      is no longer available; pre-built bundles should be downloaded
+      "a la carte" from the bundle repository.
+  </li>
+  <li>Removed the Gravity bundle from the release package, which eliminates
+      dependencies on XML and JDK 1.4; Gravity will be available
+      separately.
+  </li>
+  <li>Modified the <tt>LocalCache</tt> implementation to cache JAR
+      file object to improve performance; contributed by Rob Walker.
+  </li>
+  <li>Modified Oscar property handling to perform property substituion
+      on properties in the <tt>oscar.properties</tt> file; if a property
+      value includes a property name denoted with <tt>${..}</tt>, the
+      value of this property will be substituted for the property name.
+      The value will be taken from either the system properties or from
+      Oscar's properties. Contributed by Rob Walker.
+  </li>
+  <li>Added <tt>info</tt> shell command to display bundle properties.
+  </li>
+  <li>Modified the <tt>ps</tt> shell command to show the name of the
+      bundle if present; added a <tt>-l</tt> to show the location.
+  </li>
+  <li>Modified the System Bundle so that it now only exports the
+      packages <tt>org.osgi.framework</tt>, <tt>org.osgi.util.tracker</tt>,
+      <tt>org.osgi.service.packageadmin</tt>. All other service-related
+      packages should be exported by their implementors or put
+      into library bundles. This will allow bundles to supply
+      newer versions of the packages, which was not possible
+      previously since System Bundle packages were automatically
+      selected and resolved when the framework started.
+  </li>
+  <li>The System Bundle now displays its exports using the <tt>exports</tt>
+      command (via the PackageAdmin service).
+  </li>
+  <li>Updated the HttpService implementation to be more compliant with
+      the specification and to work with the latest version of Jetty;
+      contributed by Rob Walker.
+  </li>
+  <li>Updated HttpAdmin stylesheets to work properly with new HttpService
+      implementation; contributed by Rob Walker.
+  </li>
+  <li>The last release of Oscar moved processing of auto-install and auto-start
+      properties out of Oscar.java and into Main.java; the processing is now
+      moved back to Oscar.java so that they will be processed automatically
+      whether Oscar is embedded or not.
+  </li>
+  <li>Added <tt>SynchronousBundleListener</tt> interface and modified
+      event dispatching to process such listeners according to the
+      specification.
+  </li>
+  <li>Modified event dispatching to ensure that events are not delivered
+      to bundles that are not active or starting; the specification says
+      that events should not be delivered to bundles that are not active,
+      but it does not explicitly say <tt>Bundle.ACTIVE</tt>. I think it
+      makes more sense to deliver to both <tt>Bundle.ACTIVE</tt> and
+      <tt>Bundle.STARTING</tt> bundles, otherwise it would be impossible
+      to create a complete list of services in <tt>BundleActivator.start()</tt>,
+      for example. This may change once I have verified the intention of
+      the specification.
+  </li>
+  <li>Fixed a bug that could result in an infinite loop in some cases
+      of circular package dependencies.
+  </li>
+  <li>BundleClassLoader.getExportedResource() was not correctly
+      calculating the package name for resources, this is now fixed.
+  </li>
+  <li>Modified <tt>getServiceReferences()</tt> to not return services
+      from bundles that are stopping; this is not really specified in
+      the OSGi specification, but seems to make sense.
+  </li>
+  <li>Fixed an obscure bug in the <tt>Filter</tt> implementation that was
+      caused when an exception was thrown in the underlying LDAP evaluator;
+      the operand stack was not being emptied.
+  </li>
+  <li>Forgot to update Oscar version number, it is now updated.
+  </li>
+</ul>
+
+<tt>Release version: 0.9.1 - October 2, 2002</tt>
+<ul>
+  <li>Added new GUI shell for Oscar (includes command history); this is
+      related to the new shell service described below. To use the new
+      GUI shell, refer to the <a href="usage.html#change-ui">usage.html</a>
+      document</li>
+  <li>Defined and implemented <tt>org.ungoverned.oscar.shell.ShellService</tt>;
+      this new service acts as the basis for all shell functionality for
+      Oscar. The <tt>shell.jar</tt> and <tt>shelltui.jar</tt> bundles
+      must be listed in Oscar's <tt>oscar.auto.start</tt> property in
+      order for the default command shell to be created at start-up;
+      this is the default case. A major benefit of this approach is that
+      it is now possible for bundles implement
+      <a href="http://oscar-osgi.sf.net/repo/shell/">custom shell commands</a>.</li>
+  <li>Re-implemented the text shell as a bundle (<tt>shelltui.jar</tt>)
+      that uses the new shell service. For the most part, the shell works
+      exactly the same as before, the only difference is that you can no
+      longer install and start a bundle by simply typing a URL at the
+      prompt. Instead, to install and start a bundle in one step, use the
+      <tt>start</tt> command with a URL.</li>
+  <li>Oscar now relies more heavily on its property file (by default
+      the property file is <tt>lib/oscar.properties</tt>). A default
+      version of this file is included to maintain the same user experience
+      as previous versions of Oscar, <i><b>the only visible difference is
+      that you now must start Oscar from the install directory</b></i>.
+      This change results from the fact that the property file uses relative
+      path names to specify the URLs to the new shell service and shell
+      text UI bundles. You may edit the property file to include absolute
+      paths if you wish to run Oscar from directories other than the
+      install directory. More details about these changes are described
+      below.</li>
+  <li>Besides the shell-related bundles, added these new bundles:
+      <ul>
+        <li><b>Gravity</b> - a prototype application framework built on top of OSGi
+            (other various new bundles for Gravity were also introduced).</li>
+        <li><b>ServiceBinder</b> - a prototype of a system for automatically
+            binding/unbinding services for a bundle.</li>
+        <li><b>HttpAdmin</b> - a simple HTTP administration servlet for Oscar.</li>
+      </ul>
+  </li>
+  <li>Eliminated all Oscar command-line parameters; all configuration
+      options for Oscar are now handled exclusively via
+      "<tt>-D&LT;prop&GT;=&LT;value&GT;</tt>" settings
+      when executing the "<tt>java</tt>" command. The properties
+      that Oscar uses are:
+      <ul>
+        <li><tt><b>oscar.property.file</b></tt> - to specify the file from
+            which Oscar reads its configuration properties; this file is a
+            standard Java properties file and by default is located in
+            the same directory as <tt>oscar.jar</tt> and is called
+            <tt>oscar.properties</tt>. All of the following properties
+            can be specified in this file instead of specifying them
+            on the command-line.</li>
+        <li><tt><b>oscar.strict.osgi</b></tt> - to specify that Oscar should
+            run in "strict" OSGi compliance mode. The possible values are
+            "<tt>true</tt>" or any other value; the default value is
+            "<tt>true</tt>". Currently, there are only two features that are
+            not strict OSGi: the automatic serialization/deserialization of
+            <tt>BundleActivator</tt>s if they implement <tt>Serializable</tt>
+            and interpreting the bundle manifest export package property such
+            that it recursively include sub-packages, rather than requiring
+            that each sub-package be specified separately.</li>
+        <li><tt><b>oscar.profile.name</b></tt> - to specify the default profile
+            name to avoid the interactive profile prompt.</li>
+        <li><tt><b>oscar.auto.install</b></tt> - to specify a space delimited
+            list of bundle URLs to automatically install every time Oscar is
+            started; if the bundles are already installed, then this has
+            no affect.</li>
+        <li><tt><b>oscar.auto.start</b></tt> - to specify a space delimited
+            list of bundle URLs to automatically install and start every time
+            Oscar is started; if the bundles are already installed and
+            active, then this has no affect.</li>
+      </ul></li>
+  <li>Modified processing of <tt>oscar.auto.start</tt> shell property to
+      perform two passes of the auto-start bundles, one to install and
+      one to start; this avoids start-up order problems.</li>
+  <li>Implemented a work-around for a JVM limitation (Sun does not think
+      it is a bug). The limitation resulted in an error when you try to
+      update a bundle that uses native libraries. The error occurs because
+      native libraries are considered unique with respect to their absolute
+      path name and because Sun's JVM enforces a one-to-one mapping between
+      native libraries and class loaders. This causes a problem when you
+      update a bundle with native libraries, because the updated bundle
+      gets a new class loader and is unable to reload the native library
+      since its name is not unique and is associated with a different
+      class loader. The solution uses a simple counter variable in each
+      bundle cache directory to generate a unique library directory name
+      each time a bundle is updated; this tricks the JVM into thinking that
+      it is loading a different library. This is mostly a hack for
+      bundle development, since the result is that multiple version of the
+      native library will be left in memory.</li>
+  <li>Added support for circular import package dependencies; in previous
+      versions of Oscar, circular dependencies caused a stack overflow.</li>
+  <li>Fixed a bug that could result in an infinite loop if a bundle
+      imports the same package that it exports.</li>
+  <li>Fixed a performance issue that appeared when searching for classes
+      from a bundle that exports a lot of packages.</li>
+  <li>Added a simple patch to the HTTP service so that it unregisters
+      aliases.</li>
+  <li>Modified HTTP service in an attempt to fix problems associated
+      with registering resources.</li>
+  <li>Added documentation for the shell service and updated other
+      documentation where necessary.</li>
+</ul>
+
+<tt>Release version: 0.9.0 - May 2, 2002</tt>
+<ul>
+  <li>The Oscar release package has been divided into pieces since the
+      release package was growing considerably. <i>Note: You only need to
+      download the core oscar package, because the installer allows you to
+      download the optional packages if you want them.</i></li>
+  <li>Modified the installer to be able to install from a URL and cleaned
+      it up a bit to make it more extensible.</li>
+  <li>Added security permission checking; this is a major change and
+      many other changes are a direct result of this change. See
+      <a href="security.html">security.html</a> for more information;
+      feedback is encouraged.</li>
+  <li>Added bundles to demonstrate new security features, see
+      <a href="security.html">security.html</a> for more information.</li>
+  <li>All source files are now in the <tt>src</tt> subdirectory.</li>
+  <li>The implementation of the <tt>HttpService</tt> has been improved
+      by Rob Walker (robw@softsell.com).</li>
+  <li>Included additional bundles for the OSGi <tt>LogService</tt>,
+      a telnet service, and an XML RPC service; many thanks to
+      Rob Walker (robw@softsell.com) and his company.</li>
+  <li>Added <tt>org.osgi.framework.Constants</tt>;
+      <tt>org.ungoverned.oscar.Constants</tt> is now a subclass.</li>
+  <li>Added <tt>org.osgi.framework.AdminPermission</tt>.</li>
+  <li>Added <tt>org.osgi.framework.PackagePermission</tt>.</li>
+  <li>Added <tt>org.osgi.framework.ServicePermission</tt>.</li>
+  <li>Calling <tt>stop()</tt> on the System Bundle now shuts down
+      Oscar, per the OSGi specification.</li>
+  <li>Fixed a bug in <tt>ServiceTracker.waitForService()</tt> that caused
+      it to not wait indefinitely if the timeout was zero.</li>
+  <li>Modified <tt>BundleClassLoader</tt> to be a subclass of
+      <tt>SecureClassLoader</tt> and to associate code sources
+      to classes when they are loaded.</li>
+  <li>Modified <tt>BundleClassLoader</tt> to only load exported
+      classes if the packages are exact matches, rather than "starts with"
+      matches.</li>
+  <li>Improved the logic in <tt>BundleClassLoader</tt> to eliminate the need
+      for caching of classes, thus reducing memory usage.</li>
+  <li>Oscar now assigns a service identifier to registered services per
+      the OSGi specification; this identifier is used to select a single
+      service when multiple services matched a query.</li>
+  <li>Fixed a bug in <tt>Oscar.getBundle(long id)</tt> that would incorrectly
+      return the last valid bundle if an invalid identifier were passed in;
+      I can't believe no one noticed this before!</li>
+  <li>Moved event listener wrappers from <tt>Oscar.java</tt> to the <tt>util</tt>
+      package and put them all in separate files.</li>
+  <li>The system bundle now exports numerous packages and includes an
+      <tt>Export-Package</tt> property indicating the which packages are exported,
+      per the specification.</li>
+  <li>Oscar now adds a property <tt>Constants.OSCAR_VERSION_PROPERTY</tt>
+      who's value is the version of Oscar; <tt>OscarShell</tt> now as a
+      <tt>version</tt> command to access this property.</li>
+  <li><tt>OscarShell</tt> now accepts two arguments:
+      <ul>
+        <li><tt>-nonstrict</tt> - to specify that Oscar should run in "nonstrict"
+            OSGi compliance mode; currently, there are only two non-strict features:
+            the automatic serialization/deserialization of <tt>BundleActivator</tt>s
+            if they implement <tt>Serializable</tt> and allowing the bundle manifest
+            export package property to include sub-packages, rather than specifying
+            each sub-package separately.</li>
+        <li><tt>-profile &lt;name&gt;</tt> - to specify the profile name and avoid
+            the interactive profile prompt.</li>
+        <li><tt>-prop &lt;property-file&gt;</tt> - to specify where the
+            <tt>oscar.properties</tt> file is located.</li>
+      </ul></li>
+  <li>The <tt>services</tt> command in <tt>OscarShell</tt> now ignores bundles that
+      have been uninstalled; this avoids an exception.</li>
+  <li>Substantial changes to the installer.</li>
+  <li>Various method renaming for better readability.</li>
+</ul>
+
+<tt>Release version: 0.8.0 - February 4, 2002</tt>
+<ul>
+  <li>Modified <tt>BundleContextImpl.getServiceReference()</tt> so that it
+      returns the "best" service reference as defined by the OSGi
+      specification.</li>
+  <li>Modified the Messenger example bundle to user <tt>ServiceTracker</tt>.</li>
+  <li>Initial implementation of <tt>org.osgi.util.tracker.ServiceTracker</tt>
+      utility class; it has not been thoroughly tested, so I would
+      appreciate some feedback.</li>
+  <li>Modified <tt>BundleContext.getServiceReference()</tt> and
+      <tt>BundleContext.getServiceReferences()</tt> to accept <tt>null</tt>
+      for the <tt>clazz</tt> parameter; the specification is not totally
+      clear on this, but it was necessary for <tt>ServiceTracker</tt>.</li>
+  <li>Removed the <tt>StorageSystem</tt> file system abstraction layer
+      since it is not possible to completely abstract the file system and
+      because of the performance hit it imposed.</li>
+  <li>You can now start Oscar by simply typing from the install
+      directory:
+      <ul>
+          <tt>java -jar lib/oscar.jar</tt>
+      </ul>
+      You can run Oscar from any directory using the above mechanism
+      simply by specifying the absolute path to <tt>oscar.jar</tt>. The
+      <tt>run.*</tt> scripts now use this method.</li>
+  <li>The <tt>BundleContext.getDataFile()</tt> method now works.</li>
+  <li>Modified <tt>Oscar.getServiceReferences()</tt> to ignore uninstalled
+      bundles, which otherwise caused <tt>InvalidStateException</tt>s.</li>
+  <li>Installer now uses <tt>java.home</tt> as default for Java directory
+      and <tt>user.home</tt> for the install directory.</li>
+  <li><tt>OscarShell</tt> now accepts a profile name parameter, which
+      when supplied eliminates the profile name query.</li>
+  <li>Added an <tt>exports</tt> command to <tt>OscarShell</tt>, which lists
+      all exported packages; also renamed the shell command <tt>printenv</tt>
+      to <tt>services</tt> to make it more consistent.</li>
+  <li>Modified <tt>OscarShell</tt> to catch all exception when interacting
+      with the framework; it is now less likely that the shell will exit
+      due to an exception.</li>
+  <li>The <tt>debug</tt> command in <tt>OscarShell</tt> was accidentally
+      renamed to <tt>m_debug</tt>; this is now fixed.</li>
+  <li>Updated LDAP to create in-fix string representation of query for the
+      <tt>FilterImpl.toString()</tt> method; these updates were intended
+      for version <tt>0.7.6</tt>.</li>
+  <li>Modified <tt>PackageAdminImpl.getExportedPackages()</tt> to accept
+      a <tt>null</tt> parameter, which lists all exported packages.</li>
+  <li>Fixed a bug in <tt>ExportedPackageImpl</tt>, which was inadvertently
+      using <tt>!isRemovalPending()</tt> instead of <tt>isRemovalPending</tt>.
+      </li>
+  <li>Modifed <tt>ExportedPackageImpl.getImportingBundles()</tt> to
+      include the exporting bundle in its return array.</li>
+  <li>Modified <tt>HeadersDictionary</tt> in <tt>BundleImpl</tt> to make
+      a copy of all manifest header information and convert keys/values to
+      <tt>String</tt>s; previously keys were of type <tt>Attributes.Name</tt>
+      and this caused problems when manifest header keys were accessed
+      directly.</li>
+  <li>Added a debug flag to <tt>build.xml</tt>.
+  </li><li>Added some JavaDoc comments to some files and also now include the
+      OSGi packages when creating the JavaDoc API documentation.</li>
+</ul>
+
+<tt>Release version: 0.7.6 - January 5, 2002</tt>
+<ul>
+  <li>Implemented <tt>org.osgi.framework.Filter</tt> per the
+      OSGi 2.0 specification; added corresponding <tt>createFilter()</tt>
+      method to <tt>BundleContext</tt>. Modified existing code to use
+      Filter implementation instead of LDAP evaluator directly.</li>
+  <li>The LDAP parser now allows the "." character in key names;
+      thanks to Rob Walker (robw@softsell.com) for contributing this.</li>
+  <li>Temporarily hacked System Bundle to export the
+      <tt>org.osgi.framework</tt> package for bundles conforming
+      to OSGi 2.0; thanks to Rob Walker (robw@softsell.com) for
+      contributing this.</li>
+  <li>Modified the start-up process to automatically update
+      bundles if the previous session did not perform a
+      "refresh"; this was not being done previously.</li>
+  <li>Modified the Oscar constructors slightly to use <tt>List</tt> objects
+      rather than <tt>ArrayList</tt> objects.</li>
+  <li>Fixed a bug in the bundle update procedure.</li>
+  <li>Fixed a bug in native library loading for bundles.</li>
+</ul>
+
+<tt>Release version: 0.7.2 - November 24, 2001</tt>
+<ul>
+  <li>Fixed a major bug in the "eager resolving" routine that was not actually
+      doing any eager resolving.  Oops.</li>
+  <li>Fixed a bug in the refresh packages routine that was not correctly
+      handling the refreshing of an uninstalled package.</li>
+  <li>All event delivery is now asynchronous; this will change to reflect
+      proper OSGi 2.0 event handling in a future release.</li>
+</ul>
+
+<tt>Release version: 0.7.0 - November 21, 2001</tt>
+<ul>
+  <li>Added <tt>PackageAdmin</tt> service implementation from the 2.0
+      specification; this service is used to refresh exported packages
+      after a bundle is updated or uninstalled.</li>
+  <li>Added a "refresh" command to <tt>OscarShell</tt> that uses the
+      new <tt>PackageAdmin</tt> service to refresh exported packages after
+      a bundle is updated or uninstalled.</li>
+  <li>The actual process of deleting an uninstalled bundles is now delayed
+      until a "refresh" occurs or until the framework shuts down.</li>
+  <li>Modified Oscar's constructors with respect to registering service
+      objects when using an embedded instance of Oscar. Previously, a list
+      of <tt>ServiceRecord</tt> objects were passed into Oscar's constructor,
+      but this has been changed to be a list of <tt>BundleActivator</tt>
+      objects.</li>
+  <li>Oscar's approach to concurrency control was modified to specifically
+      support multi-bundle state change operations, such as what is required
+      to refresh exported packages in multiple bundles.</li>
+  <li>Removed all file handling via <tt>File</tt> objects from Oscar and
+      introduced a simple virtual storage layer using the <tt>StorageSystem</tt>
+      and related interfaces; this may prove to be inefficient.</li>
+  <li>Merged most bundle functionality into the <tt>BundleImpl</tt> class.</li>
+  <li>Modified Oscar's container bundle to comply with the "system bundle"
+      notion in the 2.0 specification.</li>
+  <li>The handling of package exporting/importing was modified to provide
+      more consistent package binding across all bundles.</li>
+  <li>Exported packages are now only available after a bundle is resolved
+      per the specification. Oscar still delays resolving bundles, but "eager
+      resolving" of bundles is performed if an installed bundle exports a
+      package needed by another bundle that is being activated.</li>
+  <li>Added a simple design document in the <tt>doc/</tt> directory.</li>
+  <li>Many smaller fixes, additions, and changes that are too numerous
+      to mention.</li>
+</ul>
+
+<tt>Third release version: 0.6.0 - July 1, 2001</tt>
+<ul>
+  <li>Implemented support for packaging native libraries in bundle JAR files.</li>
+  <li>Modified the <i><b>simple</b></i> example bundle to include a native
+      library for Linux PC platforms; eventually a Windows DLL will be included
+      as well.</li>
+  <li>Removed dependency on <tt>javax.swing.event.EventListenerList</tt> in
+      the core framework. Completely re-implemented event dispatching by
+      creating a <tt>DispatchQueue</tt>.
+  </li><li>Adjusted some architectural issues that complicated bundle handling,
+      synchronization, and event handling.</li>
+  <li>Minimized some synchronized blocks that were too broad and could lead
+      to deadlock in the face of multiple threads.</li>
+  <li>Added a very, very preliminary HTTP service bundle implementation
+      built on top of a slightly modified version of
+      <a href="http://jetty.mortbay.com">Jetty</a>. This implementation
+      only functions enough to register a servlet and display its contents.
+      Refer to the bundle documentation for more information.</li>
+  <li>Modified <tt>getServiceReferences()</tt> method to actually use the
+      query filter that is passed in; previously this was just ignored.</li>
+  <li>Fixed a bug that was causing some event listeners to not get removed.</li>
+  <li>Other slight architectural and cosmetic changes to clean up the code.</li>
+</ul>
+
+<tt>Second release version: 0.5.0 - May 20, 2001</tt>
+<ul>
+  <li>Some major architectural changes to reduce coupling among classes.
+      All bundle functionality is divided into separate managers that are
+      all access indirectly via Oscar; these include <tt>PackageManager</tt>,
+      <tt>ServiceImporter</tt>, and <tt>ServiceExporter</tt>. This change
+      should not affect existing bundles.</li>
+  <li>Added "strict" OSGi mode; strict OSGi mode can be enabled via the
+      appropriate Oscar constructor. When running in strict mode, Oscar
+      will not perform any of its extensions to the OSGi specification.</li>
+  <li>Created a non-OSGi extension for automatically handling bundle
+      activator persistence. If a bundle activator is also <tt>Serializable</tt>,
+      then Oscar will automatically persist the activator on shutdown and
+      reconstruct it on start up. This is a convenience mechanism to simplify
+      configuration persistence.</li>
+  <li>Oscar now supports property files, see the
+      <a href="usage.html">usage documentation</a><a> for a description of how
+      it works. Bundles can access the properties through the
+      <tt>BundleContext</tt>.</a></li>
+<a>   <li>Oscar now supports a "container" service that allows applications
+       that use embedded instances of Oscar to offer services inside of
+       their embedded instances. The default container service provides
+       meta-data to bundles (e.g., the user name). To add your own container
+       services, simply pass them into Oscar using the appropriate
+       constructor.</li>
+   <li>Added some new bundles.</li>
+</a></ul>
+
+<a><tt>Preliminary release version: 0.3.0 - March 14, 2001</tt>
+
+</a><p>
+<a>Feel freel to contact me at
+</a><a href="mailto:heavy@ungoverned.org">heavy@ungoverned.org</a>.
+</p><p>Richard S. Hall </p>
+
+</font>
+</body></html>

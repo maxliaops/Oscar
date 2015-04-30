@@ -1,0 +1,112 @@
+<!DOCTYPE doctype PUBLIC "-//w3c//dtd html 4.0 transitional//en"><html><head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="Author" content="Richard S. Hall"><title>Oscar Installation</title></head>
+<body text="#000000" bgcolor="#ffffff" link="#0000ee" vlink="#551a8b" alink="#ff0000">
+<font face="sans-serif">
+
+<h2>Oscar Installation</h2>
+
+<tt>Release version: 1.0.5 - May 13, 2005</tt>
+
+<ul>
+     <li> <a href="#requirements">Requirements</a></li>
+     <li> <a href="#installation">Installation</a></li>
+     <li> <a href="#feedback">Feedback</a></li>
+</ul>
+
+<h2><a name="requirements"></a>Requirements</h2>
+
+<p>
+Everything needed to run Oscar is included in the release package except
+for Java. In order to run Oscar you must install a recent version of either the
+Java 2 Development Kit (JDK) or the Java 2 Runtime Environment (JRE). If
+you do not plan to do development, then it is not necessary to install the
+JDK, in that case the JRE is sufficient. Java is freely available from
+<a href="http://java.sun.com/j2se/">Sun Microsystems</a>.</p>
+
+<h2><a name="installation"></a>Installation</h2>
+
+<p>
+To install Oscar you only need to
+<a href="http://forge.objectweb.org/project/showfiles.php?group_id=113">download</a>
+the core Oscar release package, which will be named according to this pattern:
+<tt>oscar-&lt;release-version&gt;.jar</tt>. After downloading the core Oscar
+release package, use the <tt>java</tt> command to execute the JAR file,
+like this (the following command assumes that you are trying to install
+the 1.0.0 version of Oscar and that you have Java in your
+<tt>PATH</tt>):
+</p>
+
+<pre>    java -jar oscar-1.0.0.jar<br></pre>
+
+<p>
+For the above command to work properly, make sure you enter the name of the
+Oscar release package that you downloaded in place of
+"<tt>oscar-1.0.0.jar</tt>" in the above example command. For Windows users,
+it is often the case that you can just double-click on the JAR file to
+execute it. Executing the Oscar release package invokes the installer GUI,
+which looks like this:
+</p>
+
+<p>
+<img src="install.png" alt="[installer]">
+</p>
+
+<p>
+By default, everything will be installed when you click on the "OK" button.
+A text-based command shell is the default means of interacting with Oscar,
+but you can choose the GUI shell if you desire; the GUI shell has plugins
+for displaying installed bundles, accessing the command shell, and accessing
+the bundle repository. To make the GUI shell your default Oscar
+shell, click on the corresponding radio button.
+</p>
+
+<p>
+In addition to selecting the shell,
+you can change Oscar's installation directory and which JVM it will use by
+editing the corresponding property. The default values should be reasonable
+if you are uncertain as to what these values should be. You may also choose
+to not install the user or API documentation by disabling the check box
+next to the corresponding property. If you have downloaded the documentation
+packages separately (perhaps because you are behind a firewall), then
+you may type the appropriate "<tt>file://</tt>" URL into the supplied text
+field to avoid downloading them again. For directory names, it is best to
+avoid using "space" characters, but they should work correctly. The install
+process automatically configures the start-up scripts; <tt>oscar.bat</tt>
+for Windows and <tt>oscar.sh</tt> for UNIX-based platforms.
+</p>
+
+<p>
+After installation your Oscar installation directory will contain the
+following files and directories:
+</p>
+
+<ul>
+     <li><tt>LICENSE.txt</tt> - The Oscar license.</li>
+     <li><tt>oscar.bat</tt> - Windows batch file to start Oscar.</li>
+     <li><tt>oscar.sh</tt> - UNIX script to start Oscar.</li>
+     <li><tt>example.policy</tt> - An example permission policy file.</li>
+     <li><tt>src.jar</tt> - The source code for everything.</li>
+     <li><tt>lib/</tt> - Libraries necessary to run Oscar.</li>
+     <li><tt>bundle/</tt> - Bundles necessary to run Oscar's shell and
+         user interfaces.</li>
+     <li><tt>doc/</tt> - User and API documentation, if selected for
+         installation.</li>
+</ul>
+
+<p>
+At this point, you are ready to start using Oscar. Please refer to the
+<a href="usage.html">usage document</a> for more details.
+</p>
+
+<h2><a name="feedback"></a>Feedback</h2>
+
+<p>
+If you have comments or suggestions, feel free to contact me at
+<a href="mailto:heavy@ungoverned.org">heavy@ungoverned.org</a>.
+</p>
+
+<p>Richard S. Hall </p>
+
+</font>
+</body></html>
